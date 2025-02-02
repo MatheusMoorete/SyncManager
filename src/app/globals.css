@@ -1,0 +1,134 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+ 
+@layer base {
+  :root {
+    /* Cores base do tema */
+    --neutral-cream: 37 24% 93%;
+    --terracotta: 13 45% 53%;
+    --charcoal: 220 25% 24%;
+    --soft-sage: 84 17% 52%;
+    --blush-pink: 0 29% 74%;
+
+    /* Variáveis do shadcn/ui */
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+ 
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+ 
+    --primary: 222.2 47.4% 11.2%;
+    --primary-foreground: 210 40% 98%;
+ 
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+ 
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+ 
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+ 
+    --success: var(--soft-sage);
+    --success-foreground: var(--neutral-cream);
+
+    --warning: 45 67% 63%;
+    --warning-foreground: var(--charcoal);
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --info: 217 43% 58%;
+    --info-foreground: var(--neutral-cream);
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+ 
+    --radius: 0.5rem;
+  }
+ 
+  .dark {
+    --background: var(--charcoal);
+    --foreground: var(--neutral-cream);
+ 
+    --card: 220 25% 28%;
+    --card-foreground: var(--neutral-cream);
+ 
+    --popover: 220 25% 28%;
+    --popover-foreground: var(--neutral-cream);
+ 
+    --primary: var(--terracotta);
+    --primary-foreground: var(--neutral-cream);
+ 
+    --secondary: var(--soft-sage);
+    --secondary-foreground: var(--neutral-cream);
+ 
+    --muted: 220 25% 32%;
+    --muted-foreground: 37 24% 80%;
+ 
+    --accent: var(--blush-pink);
+    --accent-foreground: var(--charcoal);
+ 
+    --success: var(--soft-sage);
+    --success-foreground: var(--neutral-cream);
+
+    --warning: 45 67% 63%;
+    --warning-foreground: var(--charcoal);
+
+    --destructive: 0 41% 53%;
+    --destructive-foreground: var(--neutral-cream);
+
+    --info: 217 43% 58%;
+    --info-foreground: var(--neutral-cream);
+ 
+    --border: 220 25% 35%;
+    --input: 220 25% 35%;
+    --ring: var(--terracotta);
+  }
+}
+ 
+/* Estilização da barra de rolagem */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 8px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(51, 51, 51, 0.15);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(51, 51, 51, 0.25);
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+/* Para Firefox */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(51, 51, 51, 0.15) transparent;
+}
+
+/* Estilização base */
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    background-image: linear-gradient(135deg, hsl(var(--neutral-cream)) 0%, hsl(37 24% 90%) 100%);
+  }
+} 
