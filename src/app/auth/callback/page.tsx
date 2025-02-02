@@ -1,12 +1,12 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuthStore } from '@/store/auth-store'
 import { supabase } from '@/lib/supabase/index'
 import { useToast } from '@/components/ui/use-toast'
 
-export default function AuthCallbackPage() {
+function AuthCallbackContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { setUser } = useAuthStore()
@@ -73,5 +73,20 @@ export default function AuthCallbackPage() {
         <p className="text-muted-foreground">Por favor, aguarde.</p>
       </div>
     </div>
+  )
+}
+
+export default function AuthCallbackPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-pulse text-center">
+          <h1 className="text-2xl font-semibold mb-2">Carregando...</h1>
+          <p className="text-muted-foreground">Por favor, aguarde.</p>
+        </div>
+      </div>
+    }>
+      <AuthCallbackContent />
+    </Suspense>
   )
 } 
