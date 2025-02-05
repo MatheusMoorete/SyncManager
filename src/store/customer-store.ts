@@ -1,24 +1,74 @@
+/**
+ * @store CustomerStore
+ * @description Gerenciamento centralizado de clientes com suporte a CRUD, filtros e pontos de fidelidade
+ */
+
 import { create } from 'zustand'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase/index'
 import { Customer, CustomerFormValues, CustomerFilters } from '@/types/customer'
+import { PostgrestError } from '@supabase/supabase-js'
 
+/**
+ * @interface DatabaseCustomer
+ * @description Estrutura dos dados do cliente como armazenados no banco
+ */
+interface DatabaseCustomer {
+  full_name: string
+  phone: string
+  id: string
+  email: string | null
+  birth_date: string | null
+  notes: string | null
+  created_at: string
+  updated_at: string
+  loyalty_points: {
+    points_earned: number
+  } | null
+}
+
+/**
+ * @interface CustomerError
+ * @description Estrutura de erro customizada para operações com clientes
+ */
+interface CustomerError extends Error {
+  code?: string;
+  details?: string;
+  hint?: string;
+}
+
+/**
+ * @interface CustomerState
+ * @description Estado global do gerenciamento de clientes
+ */
 interface CustomerState {
   customers: Customer[]
   isLoading: boolean
   filters: CustomerFilters
   actions: {
+    /** Busca todos os clientes aplicando os filtros atuais */
     fetchCustomers: () => Promise<void>
+    /** Cria um novo cliente */
     createCustomer: (data: CustomerFormValues) => Promise<void>
+    /** Atualiza os dados de um cliente existente */
     updateCustomer: (id: string, data: CustomerFormValues) => Promise<void>
+    /** Realiza a exclusão lógica de um cliente */
     deleteCustomer: (id: string) => Promise<void>
+    /** Restaura um cliente previamente excluído */
     restoreCustomer: (id: string) => Promise<void>
+    /** Atualiza os filtros de busca */
     updateFilters: (filters: Partial<CustomerFilters>) => void
+    /** Busca um cliente específico com seus detalhes */
     fetchCustomer: (id: string) => Promise<void>
   }
   selectedCustomer?: Customer
 }
 
+/**
+ * @function mapFormToDb
+ * @description Converte os dados do formulário para o formato do banco
+ * @param data Dados do formulário do cliente
+ */
 const mapFormToDb = (data: CustomerFormValues) => {
   // Converte a data do formato DD/MM/YYYY para YYYY-MM-DD
   let birthDate = null;
@@ -36,6 +86,11 @@ const mapFormToDb = (data: CustomerFormValues) => {
   }
 }
 
+/**
+ * @function mapDbToForm
+ * @description Converte os dados do banco para o formato do formulário
+ * @param data Dados do cliente do banco
+ */
 const mapDbToForm = (data: Customer): CustomerFormValues => {
   // Converte a data do formato YYYY-MM-DD para DD/MM/YYYY
   let birthDate = undefined;
@@ -59,6 +114,22 @@ const mapDbToForm = (data: Customer): CustomerFormValues => {
   }
 }
 
+/**
+ * @hook useCustomerStore
+ * @description Hook Zustand para gerenciamento de estado dos clientes
+ * @example
+ * const { customers, isLoading, actions } = useCustomerStore()
+ * 
+ * // Buscar clientes
+ * useEffect(() => {
+ *   actions.fetchCustomers()
+ * }, [])
+ * 
+ * // Criar novo cliente
+ * const handleSubmit = async (data: CustomerFormValues) => {
+ *   await actions.createCustomer(data)
+ * }
+ */
 export const useCustomerStore = create<CustomerState>((set, get) => ({
   customers: [],
   isLoading: false,
@@ -136,22 +207,35 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
         }
 
         // Mapear os dados para incluir os pontos
-        const customersWithPoints = (data || []).map((customer: any) => ({
+        const rawData = data as unknown as Array<{
+          full_name: string
+          phone: string
+          id: string
+          email: string | null
+          birth_date: string | null
+          notes: string | null
+          created_at: string
+          updated_at: string
+          loyalty_points: { points_earned: number } | null
+        }>;
+
+        const customersWithPoints: Customer[] = (rawData || []).map((customer) => ({
           full_name: customer.full_name,
           phone: customer.phone,
-          points: 0, // Temporariamente 0 até resolver o acesso
+          points: customer.loyalty_points?.points_earned || 0,
           id: customer.id,
-          email: customer.email,
-          birth_date: customer.birth_date,
-          notes: customer.notes,
+          email: customer.email || undefined,
+          birth_date: customer.birth_date || undefined,
+          notes: customer.notes || undefined,
           created_at: customer.created_at,
           updated_at: customer.updated_at
         }))
 
         set({ customers: customersWithPoints })
-      } catch (error: any) {
-        console.error('Error fetching customers:', error)
-        if (error.message.includes('Não autorizado')) {
+      } catch (error) {
+        const customerError = error as CustomerError;
+        console.error('Error fetching customers:', customerError)
+        if (customerError.message.includes('Não autorizado')) {
           // Redirecionar para login
           window.location.href = '/auth/login'
         } else {
@@ -193,25 +277,26 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
         toast.success('Cliente adicionado com sucesso!', {
           duration: 1500,
         })
-      } catch (error: any) {
+      } catch (error) {
+        const customerError = error as CustomerError;
         console.error('Error creating customer:', {
-          error,
-          message: error.message,
-          details: error.details,
-          code: error.code
+          error: customerError,
+          message: customerError.message,
+          details: customerError.details,
+          code: customerError.code
         })
         
         // Mensagens de erro mais específicas
-        if (error.code === '23505') {
+        if (customerError.code === '23505') {
           toast.error('Já existe um cliente com este telefone', {
             duration: 3000,
           })
-        } else if (error.message?.includes('auth')) {
+        } else if (customerError.message?.includes('auth')) {
           toast.error('Erro de autenticação. Por favor, faça login novamente', {
             duration: 3000,
           })
         } else {
-          toast.error(`Erro ao criar cliente: ${error.message || 'Erro desconhecido'}`, {
+          toast.error(`Erro ao criar cliente: ${customerError.message || 'Erro desconhecido'}`, {
             duration: 3000,
           })
         }

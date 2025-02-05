@@ -1,3 +1,28 @@
+/**
+ * @module useToast
+ * @description Hook e utilitários para gerenciamento de notificações toast
+ * 
+ * @features
+ * - Sistema de notificações em memória
+ * - Limite configurável de toasts simultâneos
+ * - Auto-dismiss com delay configurável
+ * - Suporte a atualização e remoção de toasts
+ * - Gerenciamento de estado com reducer
+ * 
+ * @example
+ * // Uso básico do hook
+ * const { toast } = useToast()
+ * toast({ title: "Sucesso", description: "Operação concluída" })
+ * 
+ * // Toast com ação
+ * toast({
+ *   title: "Erro",
+ *   description: "Falha ao salvar",
+ *   variant: "destructive",
+ *   action: <ToastAction onClick={retry}>Tentar novamente</ToastAction>
+ * })
+ */
+
 import * as React from "react"
 
 import type {
@@ -5,9 +30,23 @@ import type {
   ToastProps,
 } from "@/components/ui/toast"
 
+/**
+ * @const TOAST_LIMIT
+ * @description Número máximo de toasts exibidos simultaneamente
+ */
 const TOAST_LIMIT = 1
+
+/**
+ * @const TOAST_REMOVE_DELAY
+ * @description Tempo em milissegundos antes de remover o toast após dismiss
+ */
 const TOAST_REMOVE_DELAY = 1000000
 
+/**
+ * @type ToasterToast
+ * @description Tipo que define a estrutura de um toast
+ * @extends {ToastProps}
+ */
 type ToasterToast = ToastProps & {
   id: string
   title?: React.ReactNode
@@ -15,6 +54,10 @@ type ToasterToast = ToastProps & {
   action?: ToastActionElement
 }
 
+/**
+ * @const actionTypes
+ * @description Tipos de ações possíveis no reducer de toasts
+ */
 const actionTypes = {
   ADD_TOAST: "ADD_TOAST",
   UPDATE_TOAST: "UPDATE_TOAST",
@@ -24,6 +67,11 @@ const actionTypes = {
 
 let count = 0
 
+/**
+ * @function genId
+ * @description Gera um ID único para cada toast
+ * @returns {string} ID gerado
+ */
 function genId() {
   count = (count + 1) % Number.MAX_VALUE
   return count.toString()
@@ -31,6 +79,10 @@ function genId() {
 
 type ActionType = typeof actionTypes
 
+/**
+ * @type Action
+ * @description União discriminada dos tipos de ações possíveis
+ */
 type Action =
   | {
       type: ActionType["ADD_TOAST"]
@@ -49,12 +101,21 @@ type Action =
       toastId?: ToasterToast["id"]
     }
 
+/**
+ * @interface State
+ * @description Estado global dos toasts
+ */
 interface State {
   toasts: ToasterToast[]
 }
 
 const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
 
+/**
+ * @function addToRemoveQueue
+ * @description Adiciona um toast à fila de remoção
+ * @param {string} toastId - ID do toast a ser removido
+ */
 const addToRemoveQueue = (toastId: string) => {
   if (toastTimeouts.has(toastId)) {
     return
@@ -71,6 +132,13 @@ const addToRemoveQueue = (toastId: string) => {
   toastTimeouts.set(toastId, timeout)
 }
 
+/**
+ * @function reducer
+ * @description Reducer para gerenciar o estado dos toasts
+ * @param {State} state - Estado atual
+ * @param {Action} action - Ação a ser executada
+ * @returns {State} Novo estado
+ */
 export const reducer = (state: State, action: Action): State => {
   switch (action.type) {
     case "ADD_TOAST":
@@ -130,6 +198,11 @@ const listeners: Array<(state: State) => void> = []
 
 let memoryState: State = { toasts: [] }
 
+/**
+ * @function dispatch
+ * @description Dispara uma ação e notifica os listeners
+ * @param {Action} action - Ação a ser disparada
+ */
 function dispatch(action: Action) {
   memoryState = reducer(memoryState, action)
   listeners.forEach((listener) => {
@@ -139,6 +212,12 @@ function dispatch(action: Action) {
 
 type Toast = Omit<ToasterToast, "id">
 
+/**
+ * @function toast
+ * @description Cria e exibe um novo toast
+ * @param {Toast} props - Propriedades do toast
+ * @returns {Object} Objeto com métodos para controlar o toast
+ */
 function toast({ ...props }: Toast) {
   const id = genId()
 
@@ -168,6 +247,20 @@ function toast({ ...props }: Toast) {
   }
 }
 
+/**
+ * @hook useToast
+ * @description Hook para gerenciar toasts na aplicação
+ * @returns {Object} Objeto com estado dos toasts e métodos de controle
+ * 
+ * @example
+ * const { toast, dismiss } = useToast()
+ * 
+ * // Criar toast
+ * toast({ title: "Sucesso", description: "Operação realizada" })
+ * 
+ * // Dispensar todos os toasts
+ * dismiss()
+ */
 function useToast() {
   const [state, setState] = React.useState<State>(memoryState)
 

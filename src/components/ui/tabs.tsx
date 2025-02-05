@@ -1,11 +1,50 @@
 "use client"
 
+/**
+ * @module Tabs
+ * @description Sistema de navegação em abas para organizar conteúdo em seções
+ * 
+ * @features
+ * - Navegação acessível entre abas
+ * - Suporte a keyboard navigation
+ * - Indicador visual da aba ativa
+ * - Layout responsivo
+ * - Animações suaves de transição
+ * - Estilização customizável
+ * 
+ * @example
+ * // Tabs básico
+ * <Tabs defaultValue="account">
+ *   <TabsList>
+ *     <TabsTrigger value="account">Conta</TabsTrigger>
+ *     <TabsTrigger value="password">Senha</TabsTrigger>
+ *   </TabsList>
+ *   <TabsContent value="account">
+ *     <h2>Conta</h2>
+ *     <p>Gerencie suas informações pessoais.</p>
+ *   </TabsContent>
+ *   <TabsContent value="password">
+ *     <h2>Senha</h2>
+ *     <p>Altere sua senha.</p>
+ *   </TabsContent>
+ * </Tabs>
+ */
+
 import * as React from "react"
 import * as TabsPrimitive from "@radix-ui/react-tabs"
 import { cn } from "@/lib/utils"
 
+/**
+ * @const Tabs
+ * @description Componente raiz que gerencia o estado das abas
+ */
 const Tabs = TabsPrimitive.Root
 
+/**
+ * @component TabsList
+ * @description Container das abas/triggers
+ * @param {string} [className] - Classes CSS adicionais
+ */
 const TabsList = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.List>,
   React.ComponentPropsWithoutRef<typeof TabsPrimitive.List>
@@ -21,6 +60,12 @@ const TabsList = React.forwardRef<
 ))
 TabsList.displayName = TabsPrimitive.List.displayName
 
+/**
+ * @component TabsTrigger
+ * @description Botão que ativa uma aba específica
+ * @param {string} [className] - Classes CSS adicionais
+ * @param {string} value - Identificador único da aba
+ */
 const TabsTrigger = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger>
@@ -36,6 +81,12 @@ const TabsTrigger = React.forwardRef<
 ))
 TabsTrigger.displayName = TabsPrimitive.Trigger.displayName
 
+/**
+ * @component TabsContent
+ * @description Container do conteúdo de uma aba específica
+ * @param {string} [className] - Classes CSS adicionais
+ * @param {string} value - Identificador único da aba (deve corresponder ao value do TabsTrigger)
+ */
 const TabsContent = React.forwardRef<
   React.ElementRef<typeof TabsPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof TabsPrimitive.Content>

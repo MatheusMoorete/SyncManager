@@ -1,9 +1,34 @@
 'use client'
 
+/**
+ * @component Header
+ * @description Cabeçalho principal da aplicação com informações do usuário e controles de navegação
+ * 
+ * @features
+ * - Exibição de boas-vindas personalizada
+ * - Avatar do usuário com fallback
+ * - Controle do menu mobile
+ * - Layout responsivo
+ * 
+ * @example
+ * <Header
+ *   user={{ name: "John Doe", role: "Admin" }}
+ *   onMenuClick={() => setIsSidebarOpen(true)}
+ * />
+ */
+
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Menu } from "lucide-react"
 
+/**
+ * @interface HeaderProps
+ * @description Props do componente Header
+ * @property {Object} user - Dados do usuário logado
+ * @property {string} user.name - Nome completo do usuário
+ * @property {string} user.role - Cargo/função do usuário
+ * @property {Function} onMenuClick - Função chamada ao clicar no botão do menu mobile
+ */
 interface HeaderProps {
   user: {
     name: string
@@ -12,6 +37,12 @@ interface HeaderProps {
   onMenuClick: () => void
 }
 
+/**
+ * @function Header
+ * @description Componente de cabeçalho com informações do usuário e controles de navegação
+ * @param {HeaderProps} props - Props do componente
+ * @returns {JSX.Element} Header renderizado com informações do usuário
+ */
 export function Header({ user, onMenuClick }: HeaderProps) {
   const firstName = user.name.split(' ')[0]
 

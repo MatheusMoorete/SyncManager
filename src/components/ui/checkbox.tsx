@@ -1,3 +1,44 @@
+/**
+ * @module Checkbox
+ * @description Sistema de checkbox acessível e customizável para seleção binária
+ * 
+ * @features
+ * - Design minimalista e moderno
+ * - Totalmente acessível via teclado e leitores de tela
+ * - Suporte a estados checked, unchecked e indeterminate
+ * - Animação suave de transição
+ * - Customizável via className
+ * - Integração com formulários
+ * - Suporte a estados disabled
+ * 
+ * @example
+ * // Checkbox básico
+ * <Checkbox />
+ * 
+ * // Checkbox com label
+ * <div className="flex items-center space-x-2">
+ *   <Checkbox id="terms" />
+ *   <label htmlFor="terms">Aceito os termos</label>
+ * </div>
+ * 
+ * // Checkbox em formulário
+ * <FormField
+ *   control={form.control}
+ *   name="marketing"
+ *   render={({ field }) => (
+ *     <FormItem className="flex items-center space-x-2">
+ *       <FormControl>
+ *         <Checkbox
+ *           checked={field.value}
+ *           onCheckedChange={field.onChange}
+ *         />
+ *       </FormControl>
+ *       <FormLabel>Receber newsletter</FormLabel>
+ *     </FormItem>
+ *   )}
+ * />
+ */
+
 "use client"
 
 import * as React from "react"
@@ -6,6 +47,15 @@ import { Check } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * @component Checkbox
+ * @description Componente de checkbox com suporte a estados e acessibilidade
+ * @param {string} [className] - Classes CSS adicionais
+ * @param {boolean} [checked] - Estado de seleção do checkbox
+ * @param {function} [onCheckedChange] - Callback chamado quando o estado muda
+ * @param {boolean} [disabled] - Estado desabilitado do checkbox
+ * @returns {JSX.Element} Checkbox estilizado e acessível
+ */
 const Checkbox = React.forwardRef<
   React.ElementRef<typeof CheckboxPrimitive.Root>,
   React.ComponentPropsWithoutRef<typeof CheckboxPrimitive.Root>

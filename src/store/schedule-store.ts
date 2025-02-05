@@ -1,3 +1,8 @@
+/**
+ * @store ScheduleStore
+ * @description Gerenciamento centralizado de agendamentos com suporte a CRUD, verificação de disponibilidade e filtros
+ */
+
 import { create } from 'zustand'
 import { toast } from 'sonner'
 import { addDays, format, parse, isWithinInterval, areIntervalsOverlapping, parseISO } from 'date-fns'
@@ -12,8 +17,12 @@ import {
 import { useServiceStore } from '@/store/service-store'
 import { useCustomerStore } from '@/store/customer-store'
 import { supabase } from '@/lib/supabase'
+import { PostgrestError } from '@supabase/supabase-js'
 
-// Horário de funcionamento
+/**
+ * @const businessHours
+ * @description Configuração padrão do horário de funcionamento
+ */
 const businessHours: BusinessHours = {
   start: '09:00',
   end: '18:00',
@@ -21,6 +30,19 @@ const businessHours: BusinessHours = {
   daysOff: [0] // domingo
 }
 
+/**
+ * @interface AppointmentError
+ * @description Estrutura de erro customizada para operações com agendamentos
+ */
+interface AppointmentError extends Error {
+  message: string;
+  cause?: PostgrestError;
+}
+
+/**
+ * @interface ScheduleState
+ * @description Estado global do gerenciamento de agendamentos
+ */
 interface ScheduleState {
   appointments: Appointment[]
   selectedDate: Date
@@ -28,17 +50,43 @@ interface ScheduleState {
   filters: ScheduleFilters
   businessHours: BusinessHours
   actions: {
+    /** Busca todos os agendamentos aplicando os filtros atuais */
     fetchAppointments: () => Promise<void>
+    /** Cria um novo agendamento */
     createAppointment: (data: AppointmentFormValues) => Promise<void>
+    /** Atualiza os dados de um agendamento existente */
     updateAppointment: (id: string, data: AppointmentFormValues) => Promise<void>
+    /** Remove um agendamento */
     deleteAppointment: (id: string) => Promise<void>
+    /** Atualiza os filtros de busca */
     updateFilters: (filters: Partial<ScheduleFilters>) => void
+    /** Define a data selecionada no calendário */
     setSelectedDate: (date: Date) => void
+    /** Retorna os horários disponíveis para uma data e duração específicas */
     getAvailableTimeSlots: (date: Date, duration: string) => TimeSlot[]
+    /** Verifica se um horário específico está disponível */
     checkAvailability: (date: Date, time: string, duration: string, currentAppointmentId?: string) => boolean
   }
 }
 
+/**
+ * @hook useScheduleStore
+ * @description Hook Zustand para gerenciamento de estado dos agendamentos
+ * @example
+ * const { appointments, isLoading, actions } = useScheduleStore()
+ * 
+ * // Buscar agendamentos
+ * useEffect(() => {
+ *   actions.fetchAppointments()
+ * }, [])
+ * 
+ * // Verificar disponibilidade
+ * const isAvailable = actions.checkAvailability(
+ *   new Date(),
+ *   '14:00',
+ *   '01:00:00'
+ * )
+ */
 export const useScheduleStore = create<ScheduleState>((set, get) => ({
   appointments: [],
   selectedDate: new Date(),
@@ -153,9 +201,10 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
         set((state) => ({
           appointments: [...state.appointments, newAppointment]
         }))
-      } catch (error: any) {
-        console.error('Error creating appointment:', error)
-        toast.error(error.message || 'Erro ao criar agendamento')
+      } catch (error) {
+        const appointmentError = error as AppointmentError;
+        console.error('Error creating appointment:', appointmentError)
+        toast.error(appointmentError.message || 'Erro ao criar agendamento')
       } finally {
         set({ isLoading: false })
       }
@@ -213,9 +262,10 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
         }))
 
         toast.success('Agendamento atualizado com sucesso!')
-      } catch (error: any) {
-        console.error('Error updating appointment:', error)
-        toast.error(error.message || 'Erro ao atualizar agendamento')
+      } catch (error) {
+        const appointmentError = error as AppointmentError;
+        console.error('Error updating appointment:', appointmentError)
+        toast.error(appointmentError.message || 'Erro ao atualizar agendamento')
       } finally {
         set({ isLoading: false })
       }

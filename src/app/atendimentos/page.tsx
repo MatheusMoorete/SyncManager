@@ -1,5 +1,21 @@
 'use client'
 
+/**
+ * @component AtendimentosPage
+ * @description Página principal de gerenciamento de atendimentos com suporte a filtros, busca e atualização de status
+ * 
+ * @features
+ * - Filtros por período (hoje, semana, mês)
+ * - Busca por cliente ou serviço
+ * - Atualização de status com diálogo de conclusão
+ * - Visualização em lista com scroll infinito
+ * - Responsivo mobile-first
+ * 
+ * @example
+ * // Rota: /atendimentos
+ * <AtendimentosPage />
+ */
+
 import { useEffect, useState } from 'react'
 import { format, parseISO, startOfMonth, endOfMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
@@ -28,6 +44,15 @@ import { Search, Calendar, ChevronDown, Loader2, Filter } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
+/** Status possíveis para um atendimento */
+type AppointmentStatus = 'scheduled' | 'completed' | 'canceled' | 'no_show';
+/** Status possíveis para filtro, incluindo 'all' */
+type FilterStatus = AppointmentStatus | 'all';
+
+/**
+ * @interface CompletionDialogData
+ * @description Dados necessários para o diálogo de conclusão de atendimento
+ */
 interface CompletionDialogData {
   appointmentId: string
   serviceName: string
@@ -38,7 +63,7 @@ interface CompletionDialogData {
 export default function AtendimentosPage() {
   const { appointments, isLoading, actions } = useScheduleStore()
   const [searchTerm, setSearchTerm] = useState('')
-  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [statusFilter, setStatusFilter] = useState<FilterStatus>('all')
   const [startDate, setStartDate] = useState<string>(format(startOfMonth(new Date()), 'yyyy-MM-dd'))
   const [endDate, setEndDate] = useState<string>(format(endOfMonth(new Date()), 'yyyy-MM-dd'))
   const [showFilters, setShowFilters] = useState(false)
@@ -59,12 +84,18 @@ export default function AtendimentosPage() {
       search: searchTerm,
       startDate: start,
       endDate: end,
-      status: statusFilter !== 'all' ? statusFilter as any : undefined
+      status: statusFilter !== 'all' ? statusFilter : undefined
     })
     actions.fetchAppointments()
   }, [actions, searchTerm, statusFilter, startDate, endDate])
 
-  const handleStatusChange = async (appointmentId: string, newStatus: 'scheduled' | 'completed' | 'canceled' | 'no_show') => {
+  /**
+   * @function handleStatusChange
+   * @description Gerencia a mudança de status de um atendimento
+   * @param appointmentId ID do atendimento
+   * @param newStatus Novo status a ser aplicado
+   */
+  const handleStatusChange = async (appointmentId: string, newStatus: AppointmentStatus) => {
     const appointment = appointments.find(a => a.id === appointmentId)
     if (!appointment) return
 
@@ -87,7 +118,14 @@ export default function AtendimentosPage() {
     await updateAppointmentStatus(appointmentId, newStatus)
   }
 
-  const updateAppointmentStatus = async (appointmentId: string, status: 'scheduled' | 'completed' | 'canceled' | 'no_show', completionData?: {
+  /**
+   * @function updateAppointmentStatus
+   * @description Atualiza o status de um atendimento no banco de dados
+   * @param appointmentId ID do atendimento
+   * @param status Novo status
+   * @param completionData Dados adicionais para conclusão (opcional)
+   */
+  const updateAppointmentStatus = async (appointmentId: string, status: AppointmentStatus, completionData?: {
     duration: string
     finalPrice: number
     notes: string
@@ -120,6 +158,10 @@ export default function AtendimentosPage() {
     }
   }
 
+  /**
+   * @function handleCompleteAppointment
+   * @description Valida e processa a conclusão de um atendimento
+   */
   const handleCompleteAppointment = async () => {
     if (!completionDialog) return
 
@@ -150,6 +192,11 @@ export default function AtendimentosPage() {
     no_show: { label: 'Não Compareceu', class: 'bg-slate-100 text-slate-800' }
   }
 
+  /**
+   * @function handleFilterPeriod
+   * @description Atualiza os filtros de data baseado no período selecionado
+   * @param period Período desejado ('today' | 'week' | 'month' | 'all')
+   */
   const handleFilterPeriod = (period: 'today' | 'week' | 'month' | 'all') => {
     const today = new Date()
     
@@ -264,13 +311,13 @@ export default function AtendimentosPage() {
           <div className="grid gap-4 md:grid-cols-3">
             <Select
               value={statusFilter}
-              onValueChange={setStatusFilter}
+              onValueChange={(value: FilterStatus) => setStatusFilter(value)}
             >
-              <SelectTrigger>
-                <SelectValue placeholder="Status do atendimento" />
+              <SelectTrigger className="w-[140px]">
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">Todos os status</SelectItem>
+                <SelectItem value="all">Todos</SelectItem>
                 <SelectItem value="scheduled">Agendado</SelectItem>
                 <SelectItem value="completed">Concluído</SelectItem>
                 <SelectItem value="canceled">Cancelado</SelectItem>
@@ -346,10 +393,11 @@ export default function AtendimentosPage() {
                       </div>
                       <Select
                         value={appointment.status}
-                        onValueChange={(value) => handleStatusChange(appointment.id, value as any)}
+                        disabled={isSaving}
+                        onValueChange={(value: AppointmentStatus) => handleStatusChange(appointment.id, value)}
                       >
-                        <SelectTrigger className="w-full md:w-[140px]">
-                          <SelectValue placeholder="Alterar status" />
+                        <SelectTrigger className="w-[140px]">
+                          <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="scheduled">Agendado</SelectItem>

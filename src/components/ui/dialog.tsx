@@ -1,19 +1,68 @@
 "use client"
 
+/**
+ * @module Dialog
+ * @description Sistema de diálogos modais acessíveis e responsivos
+ * 
+ * @features
+ * - Diálogos modais com overlay
+ * - Animações suaves de entrada e saída
+ * - Totalmente acessível via teclado e leitores de tela
+ * - Layout responsivo
+ * - Estrutura flexível com header, content e footer
+ * - Suporte a ESC para fechar
+ * 
+ * @example
+ * // Diálogo básico
+ * <Dialog>
+ *   <DialogTrigger>Abrir</DialogTrigger>
+ *   <DialogContent>
+ *     <DialogHeader>
+ *       <DialogTitle>Título</DialogTitle>
+ *       <DialogDescription>Descrição do diálogo</DialogDescription>
+ *     </DialogHeader>
+ *     <p>Conteúdo do diálogo</p>
+ *     <DialogFooter>
+ *       <Button>Confirmar</Button>
+ *     </DialogFooter>
+ *   </DialogContent>
+ * </Dialog>
+ */
+
 import * as React from "react"
 import * as DialogPrimitive from "@radix-ui/react-dialog"
 import { X } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * @component Dialog
+ * @description Componente raiz do diálogo
+ */
 const Dialog = DialogPrimitive.Root
 
+/**
+ * @component DialogTrigger
+ * @description Elemento que abre o diálogo quando clicado
+ */
 const DialogTrigger = DialogPrimitive.Trigger
 
+/**
+ * @component DialogPortal
+ * @description Portal que renderiza o diálogo fora da hierarquia do DOM
+ */
 const DialogPortal = DialogPrimitive.Portal
 
+/**
+ * @component DialogClose
+ * @description Elemento que fecha o diálogo quando clicado
+ */
 const DialogClose = DialogPrimitive.Close
 
+/**
+ * @component DialogOverlay
+ * @description Overlay semi-transparente que cobre a tela quando o diálogo está aberto
+ */
 const DialogOverlay = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Overlay>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
@@ -29,6 +78,15 @@ const DialogOverlay = React.forwardRef<
 ))
 DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 
+/**
+ * @component DialogContent
+ * @description Container principal do conteúdo do diálogo
+ * @features
+ * - Centralizado na tela
+ * - Animações de entrada/saída
+ * - Botão de fechar
+ * - Layout responsivo
+ */
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
@@ -53,6 +111,10 @@ const DialogContent = React.forwardRef<
 ))
 DialogContent.displayName = DialogPrimitive.Content.displayName
 
+/**
+ * @component DialogHeader
+ * @description Cabeçalho do diálogo com título e descrição
+ */
 const DialogHeader = ({
   className,
   ...props
@@ -67,6 +129,10 @@ const DialogHeader = ({
 )
 DialogHeader.displayName = "DialogHeader"
 
+/**
+ * @component DialogFooter
+ * @description Rodapé do diálogo, geralmente contendo ações
+ */
 const DialogFooter = ({
   className,
   ...props
@@ -81,6 +147,10 @@ const DialogFooter = ({
 )
 DialogFooter.displayName = "DialogFooter"
 
+/**
+ * @component DialogTitle
+ * @description Título do diálogo
+ */
 const DialogTitle = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Title>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
@@ -96,6 +166,10 @@ const DialogTitle = React.forwardRef<
 ))
 DialogTitle.displayName = DialogPrimitive.Title.displayName
 
+/**
+ * @component DialogDescription
+ * @description Texto descritivo do diálogo
+ */
 const DialogDescription = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Description>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description>

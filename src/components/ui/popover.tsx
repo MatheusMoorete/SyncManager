@@ -1,14 +1,71 @@
 "use client"
 
+/**
+ * @module Popover
+ * @description Sistema de popovers flutuantes para menus contextuais e dicas
+ * 
+ * @features
+ * - Posicionamento automático
+ * - Animações suaves de entrada e saída
+ * - Suporte a diferentes alinhamentos
+ * - Totalmente acessível via teclado
+ * - Fecha automaticamente ao clicar fora
+ * - Suporte a ESC para fechar
+ * 
+ * @example
+ * // Popover básico
+ * <Popover>
+ *   <PopoverTrigger>Clique aqui</PopoverTrigger>
+ *   <PopoverContent>
+ *     Conteúdo do popover
+ *   </PopoverContent>
+ * </Popover>
+ * 
+ * // Popover com alinhamento personalizado
+ * <Popover>
+ *   <PopoverTrigger asChild>
+ *     <Button>Menu</Button>
+ *   </PopoverTrigger>
+ *   <PopoverContent align="start" sideOffset={8}>
+ *     <div className="grid gap-4">
+ *       <h4>Configurações</h4>
+ *       <p>Gerencie suas preferências</p>
+ *     </div>
+ *   </PopoverContent>
+ * </Popover>
+ */
+
 import * as React from "react"
 import * as PopoverPrimitive from "@radix-ui/react-popover"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * @const Popover
+ * @description Componente raiz do popover
+ */
 const Popover = PopoverPrimitive.Root
 
+/**
+ * @const PopoverTrigger
+ * @description Elemento que dispara a abertura do popover quando clicado
+ */
 const PopoverTrigger = PopoverPrimitive.Trigger
 
+/**
+ * @component PopoverContent
+ * @description Container do conteúdo do popover
+ * 
+ * @param {string} [className] - Classes CSS adicionais
+ * @param {string} [align="center"] - Alinhamento do popover (start, center, end)
+ * @param {number} [sideOffset=4] - Distância do elemento trigger em pixels
+ * 
+ * @features
+ * - Posicionamento automático
+ * - Animações de entrada/saída
+ * - Borda e sombra suaves
+ * - Layout responsivo
+ */
 const PopoverContent = React.forwardRef<
   React.ElementRef<typeof PopoverPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof PopoverPrimitive.Content>

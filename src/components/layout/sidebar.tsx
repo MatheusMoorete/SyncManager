@@ -1,5 +1,16 @@
 'use client'
 
+/**
+ * @component Sidebar
+ * @description Barra lateral de navegação com suporte a responsividade e categorização de itens
+ * 
+ * @features
+ * - Navegação categorizada (Principal, Gestão, Sistema)
+ * - Suporte a ícones e indicador de página ativa
+ * - Layout responsivo com adaptação mobile/desktop
+ * - Botão de logout integrado
+ */
+
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
@@ -17,6 +28,10 @@ import {
   ClipboardList
 } from "lucide-react"
 
+/**
+ * @const mainNavItems
+ * @description Itens de navegação principais do sistema
+ */
 const mainNavItems = [
   {
     title: "Dashboard",
@@ -25,6 +40,10 @@ const mainNavItems = [
   },
 ]
 
+/**
+ * @const managementNavItems
+ * @description Itens de navegação relacionados à gestão do negócio
+ */
 const managementNavItems = [
   {
     title: "Agenda",
@@ -53,6 +72,10 @@ const managementNavItems = [
   }
 ]
 
+/**
+ * @const systemNavItems
+ * @description Itens de navegação relacionados às configurações do sistema
+ */
 const systemNavItems = [
   {
     title: "Usuários",
@@ -66,10 +89,21 @@ const systemNavItems = [
   },
 ]
 
+/**
+ * @interface SidebarProps
+ * @description Props do componente Sidebar
+ * @property {Function} [onClose] - Função chamada ao fechar a sidebar em modo mobile
+ */
 interface SidebarProps {
   onClose?: () => void
 }
 
+/**
+ * @function Sidebar
+ * @description Componente de barra lateral com navegação e controles do sistema
+ * @param {SidebarProps} props - Props do componente
+ * @returns {JSX.Element} Sidebar renderizada com itens de navegação
+ */
 export function Sidebar({ onClose }: SidebarProps) {
   const pathname = usePathname()
 
@@ -147,6 +181,15 @@ export function Sidebar({ onClose }: SidebarProps) {
   )
 }
 
+/**
+ * @interface NavItemProps
+ * @description Props do componente de item de navegação
+ * @property {Object} item - Dados do item de navegação
+ * @property {string} item.title - Título do item
+ * @property {string} item.href - URL de destino
+ * @property {React.ComponentType} item.icon - Componente de ícone
+ * @property {boolean} [isActive] - Indica se o item está ativo
+ */
 interface NavItemProps {
   item: {
     title: string
@@ -156,6 +199,12 @@ interface NavItemProps {
   isActive?: boolean
 }
 
+/**
+ * @function NavItem
+ * @description Componente de item individual da navegação
+ * @param {NavItemProps} props - Props do componente
+ * @returns {JSX.Element} Link de navegação estilizado com ícone
+ */
 function NavItem({ item, isActive }: NavItemProps) {
   const Icon = item.icon
 

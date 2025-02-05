@@ -1,23 +1,93 @@
 "use client"
 
+/**
+ * @module DropdownMenu
+ * @description Sistema de menus suspensos com suporte a múltiplos níveis e interações
+ * 
+ * @features
+ * - Menus e submenus aninhados
+ * - Itens de checkbox e radio
+ * - Atalhos de teclado
+ * - Separadores e grupos
+ * - Animações suaves
+ * - Totalmente acessível
+ * 
+ * @example
+ * // Menu básico
+ * <DropdownMenu>
+ *   <DropdownMenuTrigger>Abrir Menu</DropdownMenuTrigger>
+ *   <DropdownMenuContent>
+ *     <DropdownMenuItem>Item 1</DropdownMenuItem>
+ *     <DropdownMenuItem>Item 2</DropdownMenuItem>
+ *   </DropdownMenuContent>
+ * </DropdownMenu>
+ * 
+ * // Menu com submenu e grupos
+ * <DropdownMenu>
+ *   <DropdownMenuTrigger>Opções</DropdownMenuTrigger>
+ *   <DropdownMenuContent>
+ *     <DropdownMenuGroup>
+ *       <DropdownMenuLabel>Conta</DropdownMenuLabel>
+ *       <DropdownMenuItem>Perfil</DropdownMenuItem>
+ *       <DropdownMenuSeparator />
+ *       <DropdownMenuSub>
+ *         <DropdownMenuSubTrigger>Mais opções</DropdownMenuSubTrigger>
+ *         <DropdownMenuSubContent>
+ *           <DropdownMenuItem>Configurações</DropdownMenuItem>
+ *         </DropdownMenuSubContent>
+ *       </DropdownMenuSub>
+ *     </DropdownMenuGroup>
+ *   </DropdownMenuContent>
+ * </DropdownMenu>
+ */
+
 import * as React from "react"
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu"
 import { Check, ChevronRight, Circle } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * @const DropdownMenu
+ * @description Componente raiz do menu suspenso
+ */
 const DropdownMenu = DropdownMenuPrimitive.Root
 
+/**
+ * @const DropdownMenuTrigger
+ * @description Elemento que dispara a abertura do menu
+ */
 const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger
 
+/**
+ * @const DropdownMenuGroup
+ * @description Agrupa itens relacionados do menu
+ */
 const DropdownMenuGroup = DropdownMenuPrimitive.Group
 
+/**
+ * @const DropdownMenuPortal
+ * @description Portal para renderizar o menu fora da hierarquia do DOM
+ */
 const DropdownMenuPortal = DropdownMenuPrimitive.Portal
 
+/**
+ * @const DropdownMenuSub
+ * @description Container para submenus
+ */
 const DropdownMenuSub = DropdownMenuPrimitive.Sub
 
+/**
+ * @const DropdownMenuRadioGroup
+ * @description Grupo de itens de rádio mutuamente exclusivos
+ */
 const DropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup
 
+/**
+ * @component DropdownMenuSubTrigger
+ * @description Trigger para abrir um submenu
+ * @param {boolean} [inset] - Adiciona padding à esquerda
+ */
 const DropdownMenuSubTrigger = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.SubTrigger>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubTrigger> & {
@@ -40,6 +110,10 @@ const DropdownMenuSubTrigger = React.forwardRef<
 DropdownMenuSubTrigger.displayName =
   DropdownMenuPrimitive.SubTrigger.displayName
 
+/**
+ * @component DropdownMenuSubContent
+ * @description Conteúdo do submenu
+ */
 const DropdownMenuSubContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.SubContent>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubContent>
@@ -56,6 +130,11 @@ const DropdownMenuSubContent = React.forwardRef<
 DropdownMenuSubContent.displayName =
   DropdownMenuPrimitive.SubContent.displayName
 
+/**
+ * @component DropdownMenuContent
+ * @description Container principal do conteúdo do menu
+ * @param {number} [sideOffset=4] - Distância do trigger em pixels
+ */
 const DropdownMenuContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
@@ -74,6 +153,11 @@ const DropdownMenuContent = React.forwardRef<
 ))
 DropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName
 
+/**
+ * @component DropdownMenuItem
+ * @description Item clicável do menu
+ * @param {boolean} [inset] - Adiciona padding à esquerda
+ */
 const DropdownMenuItem = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Item>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Item> & {
@@ -92,6 +176,11 @@ const DropdownMenuItem = React.forwardRef<
 ))
 DropdownMenuItem.displayName = DropdownMenuPrimitive.Item.displayName
 
+/**
+ * @component DropdownMenuCheckboxItem
+ * @description Item de menu com estado de checkbox
+ * @param {boolean} checked - Estado do checkbox
+ */
 const DropdownMenuCheckboxItem = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.CheckboxItem>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.CheckboxItem>
@@ -116,6 +205,10 @@ const DropdownMenuCheckboxItem = React.forwardRef<
 DropdownMenuCheckboxItem.displayName =
   DropdownMenuPrimitive.CheckboxItem.displayName
 
+/**
+ * @component DropdownMenuRadioItem
+ * @description Item de menu com estado de radio
+ */
 const DropdownMenuRadioItem = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.RadioItem>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.RadioItem>
@@ -138,6 +231,11 @@ const DropdownMenuRadioItem = React.forwardRef<
 ))
 DropdownMenuRadioItem.displayName = DropdownMenuPrimitive.RadioItem.displayName
 
+/**
+ * @component DropdownMenuLabel
+ * @description Rótulo não clicável para agrupar itens
+ * @param {boolean} [inset] - Adiciona padding à esquerda
+ */
 const DropdownMenuLabel = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Label>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Label> & {
@@ -156,6 +254,10 @@ const DropdownMenuLabel = React.forwardRef<
 ))
 DropdownMenuLabel.displayName = DropdownMenuPrimitive.Label.displayName
 
+/**
+ * @component DropdownMenuSeparator
+ * @description Linha separadora entre itens do menu
+ */
 const DropdownMenuSeparator = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Separator>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Separator>
@@ -168,6 +270,10 @@ const DropdownMenuSeparator = React.forwardRef<
 ))
 DropdownMenuSeparator.displayName = DropdownMenuPrimitive.Separator.displayName
 
+/**
+ * @component DropdownMenuShortcut
+ * @description Texto para exibir atalhos de teclado
+ */
 const DropdownMenuShortcut = ({
   className,
   ...props

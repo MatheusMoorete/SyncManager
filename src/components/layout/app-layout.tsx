@@ -1,5 +1,21 @@
 'use client'
 
+/**
+ * @component AppLayout
+ * @description Layout principal da aplicação com suporte a responsividade e navegação
+ * 
+ * @features
+ * - Sidebar responsiva com suporte a mobile
+ * - Header com informações do usuário
+ * - Sistema de notificações via Toaster
+ * - Navegação adaptativa (mobile/desktop)
+ * 
+ * @example
+ * <AppLayout>
+ *   <DashboardPage />
+ * </AppLayout>
+ */
+
 import { useState } from "react"
 import { Header } from "./header"
 import { Sidebar } from "./sidebar"
@@ -7,10 +23,21 @@ import { Button } from "@/components/ui/button"
 import { Menu } from "lucide-react"
 import { Toaster } from "@/components/ui/sonner"
 
+/**
+ * @interface AppLayoutProps
+ * @description Props do componente de layout principal
+ * @property {React.ReactNode} children - Conteúdo a ser renderizado dentro do layout
+ */
 interface AppLayoutProps {
   children: React.ReactNode
 }
 
+/**
+ * @function AppLayout
+ * @description Componente de layout principal que envolve todas as páginas da aplicação
+ * @param {AppLayoutProps} props - Props do componente
+ * @returns {JSX.Element} Layout renderizado com sidebar, header e conteúdo principal
+ */
 export function AppLayout({ children }: AppLayoutProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 

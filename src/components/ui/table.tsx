@@ -1,9 +1,69 @@
 'use client'
 
+/**
+ * @module Table
+ * @description Sistema de tabelas para exibição de dados estruturados
+ * 
+ * @features
+ * - Layout responsivo com scroll horizontal
+ * - Cabeçalho fixo
+ * - Linhas com hover e seleção
+ * - Suporte a caption e footer
+ * - Células com alinhamento customizável
+ * - Suporte a checkbox nas células
+ * 
+ * @example
+ * // Tabela básica
+ * <Table>
+ *   <TableCaption>Lista de usuários</TableCaption>
+ *   <TableHeader>
+ *     <TableRow>
+ *       <TableHead>Nome</TableHead>
+ *       <TableHead>Email</TableHead>
+ *     </TableRow>
+ *   </TableHeader>
+ *   <TableBody>
+ *     <TableRow>
+ *       <TableCell>João Silva</TableCell>
+ *       <TableCell>joao@email.com</TableCell>
+ *     </TableRow>
+ *   </TableBody>
+ * </Table>
+ * 
+ * // Tabela com seleção e footer
+ * <Table>
+ *   <TableHeader>
+ *     <TableRow>
+ *       <TableHead><Checkbox /></TableHead>
+ *       <TableHead>Item</TableHead>
+ *       <TableHead>Valor</TableHead>
+ *     </TableRow>
+ *   </TableHeader>
+ *   <TableBody>
+ *     <TableRow data-state="selected">
+ *       <TableCell><Checkbox checked /></TableCell>
+ *       <TableCell>Item 1</TableCell>
+ *       <TableCell>R$ 100,00</TableCell>
+ *     </TableRow>
+ *   </TableBody>
+ *   <TableFooter>
+ *     <TableRow>
+ *       <TableCell colSpan={2}>Total</TableCell>
+ *       <TableCell>R$ 100,00</TableCell>
+ *     </TableRow>
+ *   </TableFooter>
+ * </Table>
+ */
+
 import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * @component Table
+ * @description Container principal da tabela com suporte a scroll horizontal
+ * @param {string} [className] - Classes CSS adicionais
+ */
 const Table = React.forwardRef<
   HTMLTableElement,
   React.HTMLAttributes<HTMLTableElement>
@@ -18,6 +78,11 @@ const Table = React.forwardRef<
 ))
 Table.displayName = "Table"
 
+/**
+ * @component TableHeader
+ * @description Seção de cabeçalho da tabela
+ * @param {string} [className] - Classes CSS adicionais
+ */
 const TableHeader = React.forwardRef<
   HTMLTableSectionElement,
   React.HTMLAttributes<HTMLTableSectionElement>
@@ -26,6 +91,11 @@ const TableHeader = React.forwardRef<
 ))
 TableHeader.displayName = "TableHeader"
 
+/**
+ * @component TableBody
+ * @description Seção principal de conteúdo da tabela
+ * @param {string} [className] - Classes CSS adicionais
+ */
 const TableBody = React.forwardRef<
   HTMLTableSectionElement,
   React.HTMLAttributes<HTMLTableSectionElement>
@@ -38,6 +108,11 @@ const TableBody = React.forwardRef<
 ))
 TableBody.displayName = "TableBody"
 
+/**
+ * @component TableFooter
+ * @description Rodapé da tabela, geralmente para totalizadores
+ * @param {string} [className] - Classes CSS adicionais
+ */
 const TableFooter = React.forwardRef<
   HTMLTableSectionElement,
   React.HTMLAttributes<HTMLTableSectionElement>
@@ -53,6 +128,12 @@ const TableFooter = React.forwardRef<
 ))
 TableFooter.displayName = "TableFooter"
 
+/**
+ * @component TableRow
+ * @description Linha da tabela com suporte a hover e seleção
+ * @param {string} [className] - Classes CSS adicionais
+ * @param {string} [data-state] - Estado da linha ("selected" para selecionada)
+ */
 const TableRow = React.forwardRef<
   HTMLTableRowElement,
   React.HTMLAttributes<HTMLTableRowElement>
@@ -68,6 +149,11 @@ const TableRow = React.forwardRef<
 ))
 TableRow.displayName = "TableRow"
 
+/**
+ * @component TableHead
+ * @description Célula de cabeçalho com estilo diferenciado
+ * @param {string} [className] - Classes CSS adicionais
+ */
 const TableHead = React.forwardRef<
   HTMLTableCellElement,
   React.ThHTMLAttributes<HTMLTableCellElement>
@@ -83,6 +169,11 @@ const TableHead = React.forwardRef<
 ))
 TableHead.displayName = "TableHead"
 
+/**
+ * @component TableCell
+ * @description Célula padrão da tabela
+ * @param {string} [className] - Classes CSS adicionais
+ */
 const TableCell = React.forwardRef<
   HTMLTableCellElement,
   React.TdHTMLAttributes<HTMLTableCellElement>
@@ -95,6 +186,11 @@ const TableCell = React.forwardRef<
 ))
 TableCell.displayName = "TableCell"
 
+/**
+ * @component TableCaption
+ * @description Legenda da tabela
+ * @param {string} [className] - Classes CSS adicionais
+ */
 const TableCaption = React.forwardRef<
   HTMLTableCaptionElement,
   React.HTMLAttributes<HTMLTableCaptionElement>

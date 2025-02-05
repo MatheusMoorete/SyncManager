@@ -1,5 +1,38 @@
 "use client"
 
+/**
+ * @component Toaster
+ * @description Componente que renderiza as notificações toast na aplicação
+ * 
+ * @features
+ * - Renderização automática de toasts
+ * - Suporte a título e descrição
+ * - Ações personalizáveis
+ * - Botão de fechar
+ * - Layout responsivo
+ * 
+ * @example
+ * // No layout principal da aplicação
+ * import { Toaster } from "@/components/ui/toaster"
+ * 
+ * function RootLayout({ children }) {
+ *   return (
+ *     <>
+ *       {children}
+ *       <Toaster />
+ *     </>
+ *   )
+ * }
+ * 
+ * // Usando em qualquer componente
+ * const { toast } = useToast()
+ * toast({
+ *   title: "Sucesso!",
+ *   description: "Operação realizada com sucesso",
+ *   action: <ToastAction>Desfazer</ToastAction>
+ * })
+ */
+
 import {
   Toast,
   ToastClose,
@@ -10,6 +43,11 @@ import {
 } from "@/components/ui/toast"
 import { useToast } from "@/components/ui/use-toast"
 
+/**
+ * @function Toaster
+ * @description Renderiza os toasts ativos na aplicação
+ * @returns {JSX.Element} Container com os toasts ativos
+ */
 export function Toaster() {
   const { toasts } = useToast()
 
