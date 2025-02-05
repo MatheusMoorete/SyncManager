@@ -50,7 +50,7 @@ export function FilterSortMenu({
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="sm" className="gap-2 bg-white hover:bg-neutral-cream/50 rounded-lg h-10 px-4">
               <Filter className="h-4 w-4" />
-              Filtros
+              <span className="hidden md:inline">Filtros</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-[200px]">
@@ -72,7 +72,7 @@ export function FilterSortMenu({
         <DropdownMenuTrigger asChild>
           <Button variant="outline" size="sm" className="gap-2 bg-white hover:bg-neutral-cream/50 rounded-lg h-10 px-4">
             <ArrowUpDown className="h-4 w-4" />
-            Ordenar
+            <span className="hidden md:inline">Ordenar</span>
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-[200px]">

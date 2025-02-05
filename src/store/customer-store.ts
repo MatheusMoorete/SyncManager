@@ -14,7 +14,9 @@ interface CustomerState {
     deleteCustomer: (id: string) => Promise<void>
     restoreCustomer: (id: string) => Promise<void>
     updateFilters: (filters: Partial<CustomerFilters>) => void
+    fetchCustomer: (id: string) => Promise<void>
   }
+  selectedCustomer?: Customer
 }
 
 const mapFormToDb = (data: CustomerFormValues) => {
@@ -134,9 +136,16 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
         }
 
         // Mapear os dados para incluir os pontos
-        const customersWithPoints = data.map(customer => ({
-          ...customer,
-          points: customer.loyalty_points?.points_earned || 0
+        const customersWithPoints = (data || []).map((customer: any) => ({
+          full_name: customer.full_name,
+          phone: customer.phone,
+          points: 0, // Temporariamente 0 até resolver o acesso
+          id: customer.id,
+          email: customer.email,
+          birth_date: customer.birth_date,
+          notes: customer.notes,
+          created_at: customer.created_at,
+          updated_at: customer.updated_at
         }))
 
         set({ customers: customersWithPoints })
@@ -314,5 +323,54 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
         },
       }))
     },
+
+    fetchCustomer: async (id: string) => {
+      try {
+        set({ isLoading: true })
+
+        const { data: customer, error } = await supabase
+          .from('clients')
+          .select(`
+            *,
+            appointments(
+              id,
+              scheduled_time,
+              final_price,
+              status,
+              notes,
+              service:services(
+                name,
+                duration,
+                base_price
+              )
+            )
+          `)
+          .eq('id', id)
+          .single()
+
+        if (error) throw error
+
+        const typedCustomer = customer as any
+        set({ 
+          selectedCustomer: {
+            id: typedCustomer.id,
+            full_name: typedCustomer.full_name,
+            phone: typedCustomer.phone,
+            email: typedCustomer.email,
+            birth_date: typedCustomer.birth_date,
+            notes: typedCustomer.notes,
+            created_at: typedCustomer.created_at,
+            points: 0,
+            appointments: typedCustomer.appointments || []
+          }
+        })
+      } catch (error) {
+        console.error('Error fetching customer:', error)
+        toast.error('Erro ao buscar cliente')
+      } finally {
+        set({ isLoading: false })
+      }
+    },
   },
+  selectedCustomer: undefined,
 })) 

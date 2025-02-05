@@ -68,11 +68,13 @@ export default function DashboardPage() {
     <AppLayout>
       <div className="min-h-screen flex flex-col gap-4 p-4 pb-20 md:pb-8 md:gap-6 lg:gap-8 md:p-6 lg:p-8 bg-gradient-to-br from-neutral-cream to-neutral-cream/50">
         {/* Header */}
-        <div className="flex flex-col gap-1">
-          <h1 className="text-xl md:text-2xl font-bold text-charcoal">Dashboard</h1>
-          <p className="text-sm text-charcoal/60">
-            Acompanhe o desempenho do seu estúdio
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-3xl font-semibold font-heading text-heading">Dashboard</h2>
+            <p className="text-sm text-muted-foreground">
+              Acompanhe o desempenho do seu estúdio
+            </p>
+          </div>
         </div>
 
         {/* Stats Grid */}

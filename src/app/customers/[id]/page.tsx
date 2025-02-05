@@ -3,13 +3,13 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Calendar, Mail, Phone, Star, Edit, Save, ChevronRight } from 'lucide-react'
-import { format } from 'date-fns'
+import { format, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { toast } from 'sonner'
 import { useCustomerStore } from '@/store/customer-store'
 import { AppLayout } from '@/components/layout/app-layout'
 import { CustomerFormValues } from '@/types/customer'
-import { use } from 'react'
+import { cn } from '@/lib/utils'
 
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -19,13 +19,9 @@ import { Textarea } from '@/components/ui/textarea'
 import { Separator } from '@/components/ui/separator'
 
 export default function CustomerDetailsPage({ params }: { params: Promise<{ id: string }> }) {
-  const resolvedParams = use(params)
   const router = useRouter()
-  const { customers, actions } = useCustomerStore()
   const [isEditing, setIsEditing] = useState(false)
-  
-  // Encontrar o cliente atual
-  const customer = customers.find(c => c.id === resolvedParams.id)
+  const { selectedCustomer: customer, isLoading, actions } = useCustomerStore()
 
   // Função para ajustar altura do textarea
   const adjustTextareaHeight = (element: HTMLTextAreaElement) => {
@@ -41,22 +37,27 @@ export default function CustomerDetailsPage({ params }: { params: Promise<{ id: 
     }
   }, [customer?.notes])
 
+  // Efeito para carregar os dados do cliente
   useEffect(() => {
-    if (!customer) {
-      actions.fetchCustomers()
+    const fetchData = async () => {
+      const resolvedParams = await params
+      if (resolvedParams.id) {
+        await actions.fetchCustomer(resolvedParams.id)
+      }
     }
-  }, [customer, actions])
+    fetchData()
+  }, [params, actions])
 
-  if (!customer) {
+  if (isLoading || !customer) {
     return (
       <AppLayout>
-        <div className="p-4">
-          <Button variant="ghost" onClick={() => router.back()} className="mb-4">
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Voltar
-          </Button>
-          <div className="text-center py-8 text-charcoal/60">
-            Cliente não encontrado
+        <div className="flex flex-col min-h-screen bg-white">
+          <div className="p-4 md:p-6 lg:p-8">
+            <div className="animate-pulse space-y-4">
+              <div className="h-8 w-48 bg-neutral-cream/30 rounded" />
+              <div className="h-4 w-32 bg-neutral-cream/30 rounded" />
+              <div className="h-32 bg-neutral-cream/30 rounded" />
+            </div>
           </div>
         </div>
       </AppLayout>
@@ -296,18 +297,87 @@ export default function CustomerDetailsPage({ params }: { params: Promise<{ id: 
             <TabsContent value="history" className="mt-0">
               {/* Versão Mobile do Histórico */}
               <div className="md:hidden space-y-4">
-                <div className="text-sm text-charcoal/60 text-center py-8">
-                  Histórico de atendimentos será implementado em breve.
+                <div className="space-y-4">
+                  {customer.appointments?.map((appointment) => (
+                    <Card key={appointment.id} className="p-4">
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4 text-muted-foreground" />
+                            <span className="text-sm">
+                              {format(parseISO(appointment.scheduled_time), "PPP 'às' HH:mm", { locale: ptBR })}
+                            </span>
+                          </div>
+                          <div className={cn(
+                            'px-2.5 py-0.5 rounded-full text-xs font-semibold',
+                            {
+                              'bg-emerald-100 text-emerald-800': appointment.status === 'scheduled',
+                              'bg-green-100 text-green-800': appointment.status === 'completed',
+                              'bg-rose-100 text-rose-800': appointment.status === 'canceled',
+                              'bg-slate-100 text-slate-800': appointment.status === 'no_show'
+                            }
+                          )}>
+                            {appointment.status === 'scheduled' && 'Agendado'}
+                            {appointment.status === 'completed' && 'Concluído'}
+                            {appointment.status === 'canceled' && 'Cancelado'}
+                            {appointment.status === 'no_show' && 'Não Compareceu'}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm">{appointment.service.name}</span>
+                          <span className="text-sm text-muted-foreground">•</span>
+                          <span className="text-sm">R$ {appointment.final_price.toFixed(2)}</span>
+                        </div>
+                        {appointment.notes && (
+                          <p className="text-sm text-muted-foreground mt-2">{appointment.notes}</p>
+                        )}
+                      </div>
+                    </Card>
+                  ))}
                 </div>
               </div>
 
-              {/* Desktop History (mantido como estava) */}
+              {/* Desktop History */}
               <div className="hidden md:block">
                 <Card className="p-6 shadow-lg bg-white/95 backdrop-blur-sm border border-charcoal/10 hover:border-charcoal/20 transition-all duration-200">
                   <h2 className="text-lg font-semibold text-charcoal mb-4">Histórico de Atendimentos</h2>
-                  {/* Implementar histórico de atendimentos */}
-                  <div className="text-sm text-charcoal/60">
-                    Histórico de atendimentos será implementado em breve.
+                  <div className="space-y-4">
+                    {customer.appointments?.map((appointment) => (
+                      <Card key={appointment.id} className="p-4">
+                        <div className="flex items-start justify-between">
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <Calendar className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-sm">
+                                {format(parseISO(appointment.scheduled_time), "PPP 'às' HH:mm", { locale: ptBR })}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm">{appointment.service.name}</span>
+                              <span className="text-sm text-muted-foreground">•</span>
+                              <span className="text-sm">R$ {appointment.final_price.toFixed(2)}</span>
+                            </div>
+                            {appointment.notes && (
+                              <p className="text-sm text-muted-foreground mt-2">{appointment.notes}</p>
+                            )}
+                          </div>
+                          <div className={cn(
+                            'px-2.5 py-0.5 rounded-full text-xs font-semibold',
+                            {
+                              'bg-emerald-100 text-emerald-800': appointment.status === 'scheduled',
+                              'bg-green-100 text-green-800': appointment.status === 'completed',
+                              'bg-rose-100 text-rose-800': appointment.status === 'canceled',
+                              'bg-slate-100 text-slate-800': appointment.status === 'no_show'
+                            }
+                          )}>
+                            {appointment.status === 'scheduled' && 'Agendado'}
+                            {appointment.status === 'completed' && 'Concluído'}
+                            {appointment.status === 'canceled' && 'Cancelado'}
+                            {appointment.status === 'no_show' && 'Não Compareceu'}
+                          </div>
+                        </div>
+                      </Card>
+                    ))}
                   </div>
                 </Card>
               </div>

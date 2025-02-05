@@ -14,16 +14,28 @@ if (!supabaseUrl || !supabaseKey) {
   }
 }
 
-// Criar uma única instância do cliente Supabase
-export const supabase = createClient(
-  supabaseUrl || '',
-  supabaseKey || '',
-  {
-    auth: {
-      persistSession: true,
-      storageKey: 'brow-studio-auth',
-      autoRefreshToken: true,
-      detectSessionInUrl: true
-    },
-  }
-) 
+// Implementar padrão singleton para o cliente Supabase
+let supabaseInstance: ReturnType<typeof createClient> | null = null
+
+export const getSupabase = () => {
+  if (supabaseInstance) return supabaseInstance
+
+  supabaseInstance = createClient(
+    supabaseUrl || '',
+    supabaseKey || '',
+    {
+      auth: {
+        persistSession: true,
+        storageKey: 'brow-studio-auth',
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        flowType: 'pkce'
+      },
+    }
+  )
+
+  return supabaseInstance
+}
+
+// Exportar uma única instância do cliente
+export const supabase = getSupabase() 

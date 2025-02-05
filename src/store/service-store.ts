@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { toast } from 'sonner'
-import { supabase } from '@/lib/supabase/index'
 import { Service, ServiceFormValues, ServiceFilters } from '@/types/service'
+import { supabase } from '@/lib/supabase'
 
 interface ServiceState {
   services: Service[]
@@ -17,7 +17,7 @@ interface ServiceState {
   }
 }
 
-const mapFormToDb = (data: ServiceFormValues) => {
+const mapFormToDb = (data: ServiceFormValues): Partial<Service> => {
   return {
     name: data.name,
     description: data.description || null,
@@ -42,9 +42,7 @@ export const useServiceStore = create<ServiceState>((set, get) => ({
         set({ isLoading: true })
         const { filters } = get()
         
-        let query = supabase
-          .from('services')
-          .select('*')
+        let query = supabase.from('services').select('*')
 
         // Aplicar filtros
         if (filters.search) {
@@ -72,7 +70,7 @@ export const useServiceStore = create<ServiceState>((set, get) => ({
 
         if (error) throw error
 
-        set({ services: data as Service[] })
+        set({ services: data || [] })
       } catch (error) {
         console.error('Error fetching services:', error)
         toast.error('Erro ao carregar serviços')
@@ -85,17 +83,14 @@ export const useServiceStore = create<ServiceState>((set, get) => ({
       try {
         set({ isLoading: true })
         const userResponse = await supabase.auth.getUser()
-        
         if (!userResponse.data.user?.id) {
           throw new Error('Usuário não autenticado')
         }
 
-        const mappedData = mapFormToDb(data)
-
         const { data: newService, error } = await supabase
           .from('services')
           .insert([{
-            ...mappedData,
+            ...mapFormToDb(data),
             owner_id: userResponse.data.user.id
           }])
           .select()
@@ -108,7 +103,7 @@ export const useServiceStore = create<ServiceState>((set, get) => ({
         }))
         
         toast.success('Serviço adicionado com sucesso!')
-      } catch (error: any) {
+      } catch (error) {
         console.error('Error creating service:', error)
         toast.error('Erro ao criar serviço')
       } finally {
@@ -119,6 +114,7 @@ export const useServiceStore = create<ServiceState>((set, get) => ({
     updateService: async (id: string, data: ServiceFormValues) => {
       try {
         set({ isLoading: true })
+
         const { error } = await supabase
           .from('services')
           .update(mapFormToDb(data))
@@ -126,7 +122,16 @@ export const useServiceStore = create<ServiceState>((set, get) => ({
 
         if (error) throw error
 
-        get().actions.fetchServices()
+        set((state) => ({
+          services: state.services.map(service =>
+            service.id === id ? {
+              ...service,
+              ...mapFormToDb(data),
+              updated_at: new Date().toISOString()
+            } : service
+          )
+        }))
+
         toast.success('Serviço atualizado com sucesso!')
       } catch (error) {
         console.error('Error updating service:', error)
@@ -139,6 +144,7 @@ export const useServiceStore = create<ServiceState>((set, get) => ({
     deleteService: async (id: string) => {
       try {
         set({ isLoading: true })
+
         const { error } = await supabase
           .from('services')
           .delete()
@@ -147,8 +153,9 @@ export const useServiceStore = create<ServiceState>((set, get) => ({
         if (error) throw error
 
         set((state) => ({
-          services: state.services.filter((service) => service.id !== id)
+          services: state.services.filter(service => service.id !== id)
         }))
+
         toast.success('Serviço excluído com sucesso!')
       } catch (error) {
         console.error('Error deleting service:', error)
@@ -161,6 +168,7 @@ export const useServiceStore = create<ServiceState>((set, get) => ({
     toggleServiceStatus: async (id: string, isActive: boolean) => {
       try {
         set({ isLoading: true })
+
         const { error } = await supabase
           .from('services')
           .update({ is_active: isActive })
@@ -168,7 +176,16 @@ export const useServiceStore = create<ServiceState>((set, get) => ({
 
         if (error) throw error
 
-        get().actions.fetchServices()
+        set((state) => ({
+          services: state.services.map(service =>
+            service.id === id ? {
+              ...service,
+              is_active: isActive,
+              updated_at: new Date().toISOString()
+            } : service
+          )
+        }))
+
         toast.success(
           isActive ? 'Serviço ativado com sucesso!' : 'Serviço desativado com sucesso!'
         )

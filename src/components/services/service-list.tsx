@@ -39,6 +39,11 @@ export function ServiceList({
   const { filters, actions } = useServiceStore()
   const [search, setSearch] = useState("")
 
+  // Carregar serviços ao montar o componente
+  useEffect(() => {
+    actions.fetchServices()
+  }, [actions])
+
   // Opções de ordenação
   const sortOptions = [
     { label: 'Nome', value: 'name' },
@@ -128,7 +133,8 @@ export function ServiceList({
         onSortOrderChange={(value) => actions.updateFilters({ sortOrder: value })}
       />
 
-      <div className="rounded-lg border bg-white">
+      {/* Versão Desktop */}
+      <div className="rounded-lg border bg-white hidden md:block">
         <Table>
           <TableHeader className="bg-neutral-cream/30">
             <TableRow>
@@ -209,6 +215,88 @@ export function ServiceList({
             )}
           </TableBody>
         </Table>
+      </div>
+
+      {/* Versão Mobile */}
+      <div className="md:hidden space-y-4">
+        {filteredServices.length === 0 ? (
+          <div className="text-center py-6 text-muted-foreground">
+            Nenhum serviço encontrado
+          </div>
+        ) : (
+          filteredServices.map((service) => (
+            <div
+              key={service.id}
+              className="bg-white rounded-lg border p-4 space-y-3 active:bg-neutral-cream/30 hover:border-terracotta/20 hover:shadow-md transition-all duration-200"
+            >
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium text-heading group-hover:text-terracotta transition-colors">
+                    {service.name}
+                  </p>
+                  {service.description && (
+                    <p className="text-sm text-muted-foreground">
+                      {truncateDescription(service.description)}
+                    </p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="text-sm font-medium text-heading">
+                    {formatPrice(service.base_price)}
+                  </div>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        className="h-8 w-8 p-0 hover:bg-neutral-cream/50"
+                      >
+                        <span className="sr-only">Abrir menu</span>
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-[160px]">
+                      <ServiceDialog
+                        trigger={
+                          <DropdownMenuItem
+                            onSelect={(e) => {
+                              e.preventDefault()
+                              e.stopPropagation()
+                            }}
+                            className="hover:bg-neutral-cream/50"
+                          >
+                            <Edit className="mr-2 h-4 w-4" />
+                            Editar
+                          </DropdownMenuItem>
+                        }
+                        title="Editar Serviço"
+                        initialData={{
+                          name: service.name,
+                          description: service.description || '',
+                          base_price: service.base_price,
+                          duration: service.duration,
+                          is_active: service.is_active,
+                        }}
+                        onSubmit={(data) => onUpdate(service.id!, data)}
+                        isLoading={isLoading}
+                      />
+                      <DropdownMenuItem
+                        className="text-error hover:bg-error/10 hover:text-error"
+                        onClick={() => handleDelete(service.id!, service.name)}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Excluir
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span>Duração:</span>
+                <span>{service.duration}</span>
+              </div>
+            </div>
+          ))
+        )}
       </div>
     </div>
   )

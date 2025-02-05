@@ -321,7 +321,7 @@ export function CustomerList({
           filteredCustomers.map((customer) => (
             <div
               key={customer.id}
-              className="bg-white rounded-lg border p-4 space-y-3 hover:bg-neutral-cream/10 cursor-pointer group"
+              className="bg-white rounded-lg border p-4 space-y-3 cursor-pointer group active:bg-neutral-cream/30 hover:border-terracotta/20 hover:shadow-md transition-all duration-200"
               onClick={() => handleCustomerClick(customer.id!)}
             >
               <div className="flex items-center justify-between">

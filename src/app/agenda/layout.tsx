@@ -2,8 +2,8 @@ import { Metadata } from "next"
 import { AppLayout } from "@/components/layout/app-layout"
 
 export const metadata: Metadata = {
-  title: "Serviços",
-  description: "Gerencie os serviços oferecidos pelo seu estabelecimento",
+  title: "Agenda | SyncManager",
+  description: "Gerencie seus agendamentos de forma eficiente",
 }
 
 export default function Layout({

@@ -23,8 +23,23 @@ export const customerSchema = z.object({
   updated_at: z.string().optional(),
   points: z.number().default(0),
   loyalty_points: z.object({
-    points_earned: z.number()
+    points_earned: z.number(),
+    points_spent: z.number(),
+    created_at: z.string(),
+    updated_at: z.string()
   }).optional(),
+  appointments: z.array(z.object({
+    id: z.string(),
+    scheduled_time: z.string(),
+    final_price: z.number(),
+    status: z.enum(['scheduled', 'completed', 'canceled', 'no_show']),
+    notes: z.string().nullable(),
+    service: z.object({
+      name: z.string(),
+      duration: z.string(),
+      base_price: z.number()
+    })
+  })).optional()
 })
 
 export type Customer = z.infer<typeof customerSchema>

@@ -1,3 +1,5 @@
+'use client'
+
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
@@ -5,13 +7,14 @@ import { Button } from "@/components/ui/button"
 import {
   LayoutGrid,
   Scissors,
-  Tags,
   Users,
   DollarSign,
   UserCircle,
   Settings,
   LogOut,
-  X
+  X,
+  Calendar,
+  ClipboardList
 } from "lucide-react"
 
 const mainNavItems = [
@@ -24,14 +27,19 @@ const mainNavItems = [
 
 const managementNavItems = [
   {
-    title: "Serviços",
-    href: "/services",
-    icon: Scissors,
+    title: "Agenda",
+    href: "/agenda",
+    icon: Calendar,
   },
   {
-    title: "Categorias",
-    href: "/categories",
-    icon: Tags,
+    title: "Atendimentos",
+    href: "/atendimentos",
+    icon: ClipboardList,
+  },
+  {
+    title: "Financeiro",
+    href: "/finance",
+    icon: DollarSign,
   },
   {
     title: "Clientes",
@@ -39,10 +47,10 @@ const managementNavItems = [
     icon: Users,
   },
   {
-    title: "Financeiro",
-    href: "/finance",
-    icon: DollarSign,
-  },
+    title: "Serviços",
+    href: "/services",
+    icon: Scissors,
+  }
 ]
 
 const systemNavItems = [
@@ -72,7 +80,7 @@ export function Sidebar({ onClose }: SidebarProps) {
         <div className="flex items-center gap-3">
           <div className="h-8 w-8 lg:h-6 lg:w-6 rounded bg-white/10" />
           <div>
-            <p className="text-lg lg:text-base font-semibold text-white">BrowStudio</p>
+            <p className="text-lg lg:text-base font-semibold text-white">SyncManager</p>
             <p className="text-sm lg:text-xs text-white/60">Sistema de Gestão</p>
           </div>
         </div>
