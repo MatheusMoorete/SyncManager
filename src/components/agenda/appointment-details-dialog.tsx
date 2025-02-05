@@ -216,7 +216,7 @@ export function AppointmentDetailsDialog({
                   onValueChange={(value) => setEditedData(prev => ({ ...prev, service_id: value }))}
                 >
                   <SelectTrigger className="mt-2">
-                    <SelectValue placeholder="Selecione um serviço" />
+                    <SelectValue placeholder="Selecione o serviço" />
                   </SelectTrigger>
                   <SelectContent>
                     <ScrollArea className="max-h-[200px]">

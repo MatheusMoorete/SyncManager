@@ -17,7 +17,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { Switch } from '@/components/ui/switch'
 import { useScheduleStore } from '@/store/schedule-store'
 import { useCustomerStore } from '@/store/customer-store'
 import { useServiceStore } from '@/store/service-store'
@@ -27,7 +26,6 @@ import { Service } from '@/types/service'
 import { Appointment } from '@/types/schedule'
 import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
-import { whatsAppService } from '@/services/whatsapp-service'
 import { useBusinessHoursStore } from '@/store/business-hours-store'
 
 interface AppointmentFormProps {
@@ -66,7 +64,6 @@ export function AppointmentForm({ appointment, onSuccess }: AppointmentFormProps
     appointment ? appointment.actual_duration || appointment.service.duration : ''
   )
   const [notes, setNotes] = useState(appointment?.notes || '')
-  const [sendSMS, setSendSMS] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
@@ -98,7 +95,6 @@ export function AppointmentForm({ appointment, onSuccess }: AppointmentFormProps
     setSelectedService(null)
     setDuration('')
     setNotes('')
-    setSendSMS(false)
     setIsSearching(false)
   }
 
@@ -258,19 +254,6 @@ export function AppointmentForm({ appointment, onSuccess }: AppointmentFormProps
         toast.success('Agendamento atualizado com sucesso!')
       } else {
         await scheduleActions.createAppointment(appointmentData)
-        
-        // Se marcou para enviar SMS (WhatsApp)
-        if (sendSMS) {
-          const clientPhone = selectedClient?.phone || newClient.phone
-          if (clientPhone) {
-            whatsAppService.scheduleReminder(clientPhone, {
-              clientName: selectedClient?.name || newClient.name,
-              serviceName: selectedService.name,
-              dateTime: appointmentDate
-            })
-          }
-        }
-
         toast.success('Agendamento realizado com sucesso!')
       }
       
@@ -493,17 +476,6 @@ export function AppointmentForm({ appointment, onSuccess }: AppointmentFormProps
               onChange={(e) => setNotes(e.target.value)}
             />
           </div>
-
-          {/* Notificações - Só mostrar quando criar novo agendamento */}
-          {!appointment && (
-            <div className="flex items-center justify-between">
-              <Label>Enviar SMS de confirmação</Label>
-              <Switch 
-                checked={sendSMS}
-                onCheckedChange={setSendSMS}
-              />
-            </div>
-          )}
 
           {/* Botões */}
           <div className="flex justify-end gap-2 pt-4">
