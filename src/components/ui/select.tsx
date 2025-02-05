@@ -1,17 +1,63 @@
 "use client"
 
-import * as React from "react"
-import { CaretSortIcon, CheckIcon } from "@radix-ui/react-icons"
-import * as SelectPrimitive from "@radix-ui/react-select"
+/**
+ * @module Select
+ * @description Sistema de seleção com suporte a múltiplas opções e grupos
+ * 
+ * @features
+ * - Suporte a opções únicas e grupos
+ * - Pesquisa e filtragem de opções
+ * - Navegação por teclado
+ * - Totalmente acessível
+ * - Suporte a estados disabled
+ * - Customização via className
+ * - Otimizado para touch
+ * 
+ * @example
+ * // Select básico
+ * <Select>
+ *   <SelectTrigger>
+ *     <SelectValue placeholder="Selecione uma opção" />
+ *   </SelectTrigger>
+ *   <SelectContent>
+ *     <SelectItem value="1">Opção 1</SelectItem>
+ *     <SelectItem value="2">Opção 2</SelectItem>
+ *   </SelectContent>
+ * </Select>
+ * 
+ * // Select com grupos
+ * <Select>
+ *   <SelectTrigger>
+ *     <SelectValue placeholder="Selecione uma categoria" />
+ *   </SelectTrigger>
+ *   <SelectContent>
+ *     <SelectGroup>
+ *       <SelectLabel>Frutas</SelectLabel>
+ *       <SelectItem value="apple">Maçã</SelectItem>
+ *       <SelectItem value="banana">Banana</SelectItem>
+ *     </SelectGroup>
+ *     <SelectGroup>
+ *       <SelectLabel>Vegetais</SelectLabel>
+ *       <SelectItem value="carrot">Cenoura</SelectItem>
+ *       <SelectItem value="potato">Batata</SelectItem>
+ *     </SelectGroup>
+ *   </SelectContent>
+ * </Select>
+ */
 
+import * as React from "react"
+import * as SelectPrimitive from "@radix-ui/react-select"
+import { Check, ChevronDown } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const Select = SelectPrimitive.Root
-
 const SelectGroup = SelectPrimitive.Group
-
 const SelectValue = SelectPrimitive.Value
 
+/**
+ * @component SelectTrigger
+ * @description Botão que abre o menu de seleção
+ */
 const SelectTrigger = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Trigger>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Trigger>
@@ -19,19 +65,33 @@ const SelectTrigger = React.forwardRef<
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      "flex h-9 w-full items-center justify-between rounded-md border border-charcoal/10 bg-white px-3 py-2 text-sm shadow-sm ring-offset-white placeholder:text-charcoal/60 focus:outline-none focus:ring-1 focus:ring-soft-sage/20 disabled:cursor-not-allowed disabled:opacity-50",
+      // Base
+      "flex h-10 w-full items-center justify-between rounded-md px-3 py-2 text-sm ring-offset-white",
+      // Cores e Bordas
+      "border border-charcoal/10",
+      "bg-white",
+      // Estados
+      "placeholder:text-text-muted",
+      "focus:outline-none focus:ring-2 focus:ring-charcoal/20 focus:ring-offset-2",
+      "disabled:cursor-not-allowed disabled:opacity-50",
+      // Touch
+      "touch-manipulation",
       className
     )}
     {...props}
   >
     {children}
     <SelectPrimitive.Icon asChild>
-      <CaretSortIcon className="h-4 w-4 opacity-50" />
+      <ChevronDown className="h-4 w-4 opacity-50" />
     </SelectPrimitive.Icon>
   </SelectPrimitive.Trigger>
 ))
 SelectTrigger.displayName = SelectPrimitive.Trigger.displayName
 
+/**
+ * @component SelectContent
+ * @description Container do conteúdo do select
+ */
 const SelectContent = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Content>
@@ -40,7 +100,21 @@ const SelectContent = React.forwardRef<
     <SelectPrimitive.Content
       ref={ref}
       className={cn(
-        "relative z-50 min-w-[8rem] overflow-hidden rounded-md border border-charcoal/10 bg-white text-charcoal shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2",
+        // Base
+        "relative z-50 min-w-[8rem] overflow-hidden rounded-md text-text-primary",
+        // Cores e Sombras
+        "border border-charcoal/10",
+        "bg-white",
+        "shadow-md",
+        // Animações
+        "data-[state=open]:animate-in data-[state=closed]:animate-out",
+        "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
+        "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
+        "data-[side=bottom]:slide-in-from-top-2",
+        "data-[side=left]:slide-in-from-right-2",
+        "data-[side=right]:slide-in-from-left-2",
+        "data-[side=top]:slide-in-from-bottom-2",
+        // Posicionamento
         position === "popper" &&
           "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
         className
@@ -62,18 +136,26 @@ const SelectContent = React.forwardRef<
 ))
 SelectContent.displayName = SelectPrimitive.Content.displayName
 
+/**
+ * @component SelectLabel
+ * @description Rótulo para grupo de opções
+ */
 const SelectLabel = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Label>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Label>
 >(({ className, ...props }, ref) => (
   <SelectPrimitive.Label
     ref={ref}
-    className={cn("px-2 py-1.5 text-sm font-semibold", className)}
+    className={cn("py-1.5 pl-8 pr-2 text-sm font-semibold", className)}
     {...props}
   />
 ))
 SelectLabel.displayName = SelectPrimitive.Label.displayName
 
+/**
+ * @component SelectItem
+ * @description Item selecionável do select
+ */
 const SelectItem = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Item>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Item>
@@ -81,21 +163,32 @@ const SelectItem = React.forwardRef<
   <SelectPrimitive.Item
     ref={ref}
     className={cn(
-      "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-2 pr-8 text-sm outline-none focus:bg-charcoal/5 focus:text-charcoal data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      // Base
+      "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none",
+      // Estados
+      "focus:bg-hover-medium",
+      "data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      // Touch
+      "touch-manipulation",
       className
     )}
     {...props}
   >
-    <span className="absolute right-2 flex h-3.5 w-3.5 items-center justify-center">
+    <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
       <SelectPrimitive.ItemIndicator>
-        <CheckIcon className="h-4 w-4" />
+        <Check className="h-4 w-4" />
       </SelectPrimitive.ItemIndicator>
     </span>
+
     <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
   </SelectPrimitive.Item>
 ))
 SelectItem.displayName = SelectPrimitive.Item.displayName
 
+/**
+ * @component SelectSeparator
+ * @description Linha separadora entre itens ou grupos
+ */
 const SelectSeparator = React.forwardRef<
   React.ElementRef<typeof SelectPrimitive.Separator>,
   React.ComponentPropsWithoutRef<typeof SelectPrimitive.Separator>

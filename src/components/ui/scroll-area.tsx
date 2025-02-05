@@ -11,6 +11,7 @@
  * - Preserva a largura/altura do conteúdo
  * - Totalmente acessível via teclado
  * - Suporte a touch em dispositivos móveis
+ * - Otimizado para performance
  * 
  * @example
  * // ScrollArea básica
@@ -35,14 +36,11 @@
 
 import * as React from "react"
 import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area"
-
 import { cn } from "@/lib/utils"
 
 /**
  * @component ScrollArea
  * @description Container principal com suporte a rolagem customizada
- * @param {string} [className] - Classes CSS adicionais
- * @param {React.ReactNode} children - Conteúdo que terá rolagem
  */
 const ScrollArea = React.forwardRef<
   React.ElementRef<typeof ScrollAreaPrimitive.Root>,
@@ -50,10 +48,21 @@ const ScrollArea = React.forwardRef<
 >(({ className, children, ...props }, ref) => (
   <ScrollAreaPrimitive.Root
     ref={ref}
-    className={cn("relative overflow-hidden", className)}
+    className={cn(
+      "relative overflow-hidden",
+      // Touch
+      "touch-manipulation",
+      className
+    )}
     {...props}
   >
-    <ScrollAreaPrimitive.Viewport className="h-full w-full rounded-[inherit]">
+    <ScrollAreaPrimitive.Viewport 
+      className={cn(
+        "h-full w-full rounded-[inherit]",
+        // Otimização de performance
+        "will-change-transform"
+      )}
+    >
       {children}
     </ScrollAreaPrimitive.Viewport>
     <ScrollBar />
@@ -65,8 +74,6 @@ ScrollArea.displayName = ScrollAreaPrimitive.Root.displayName
 /**
  * @component ScrollBar
  * @description Barra de rolagem estilizada
- * @param {string} [className] - Classes CSS adicionais
- * @param {string} [orientation="vertical"] - Orientação da barra ("vertical" | "horizontal")
  */
 const ScrollBar = React.forwardRef<
   React.ElementRef<typeof ScrollAreaPrimitive.ScrollAreaScrollbar>,
@@ -76,16 +83,32 @@ const ScrollBar = React.forwardRef<
     ref={ref}
     orientation={orientation}
     className={cn(
+      // Base
       "flex touch-none select-none transition-colors",
-      orientation === "vertical" &&
-        "h-full w-2.5 border-l border-l-transparent p-[1px]",
-      orientation === "horizontal" &&
-        "h-2.5 flex-col border-t border-t-transparent p-[1px]",
+      // Cores
+      "bg-transparent",
+      // Hover
+      "hover:bg-hover-light",
+      // Orientação
+      orientation === "vertical" && "h-full w-2.5 border-l border-l-transparent p-[1px]",
+      orientation === "horizontal" && "h-2.5 flex-col border-t border-t-transparent p-[1px]",
       className
     )}
     {...props}
   >
-    <ScrollAreaPrimitive.ScrollAreaThumb className="relative flex-1 rounded-full bg-border" />
+    <ScrollAreaPrimitive.ScrollAreaThumb 
+      className={cn(
+        "relative flex-1 rounded-full",
+        // Cores
+        "bg-charcoal/20",
+        // Hover
+        "hover:bg-charcoal/30",
+        // Transição
+        "transition-colors",
+        // Touch
+        "touch-manipulation"
+      )} 
+    />
   </ScrollAreaPrimitive.ScrollAreaScrollbar>
 ))
 ScrollBar.displayName = ScrollAreaPrimitive.ScrollAreaScrollbar.displayName

@@ -27,19 +27,32 @@ const config = {
         'soft-sage': '#8A9B6E',
         'blush-pink': '#D4A6A6',
 
-        // Paleta Semântica
-        'success': '#8A9B6E',
-        'error': '#BF4F4F',
-        'warning': '#E6C25C',
-        'info': '#6B8ABF',
+        // Paleta Semântica (Ajustada para melhor contraste)
+        'success': '#739456', // Mais escuro para melhor contraste
+        'error': '#B54343', // Ajustado para WCAG AA
+        'warning': '#946C15', // Mais escuro para texto
+        'info': '#4A699C', // Mais escuro para melhor contraste
 
         // Cores do Sistema
         'heading': '#1f2937',
+        'text': {
+          primary: '#2F394D', // charcoal
+          secondary: '#4B5563', // 70% de opacidade visual do charcoal
+          muted: '#6B7280', // Para textos menos importantes mas ainda legíveis
+        },
         'button': {
-          DEFAULT: '#1f2937',
-          hover: '#374151',
+          DEFAULT: '#2F394D',
+          hover: '#4B5563',
         },
 
+        // Estados e Interações
+        'hover': {
+          light: 'rgba(47, 57, 77, 0.05)', // charcoal 5%
+          medium: 'rgba(47, 57, 77, 0.1)', // charcoal 10%
+          strong: 'rgba(47, 57, 77, 0.15)', // charcoal 15%
+        },
+
+        // Shadcn UI Colors
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",

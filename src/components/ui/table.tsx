@@ -11,6 +11,7 @@
  * - Suporte a caption e footer
  * - Células com alinhamento customizável
  * - Suporte a checkbox nas células
+ * - Otimizado para leitura de dados
  * 
  * @example
  * // Tabela básica
@@ -71,7 +72,11 @@ const Table = React.forwardRef<
   <div className="relative w-full overflow-auto">
     <table
       ref={ref}
-      className={cn("w-full caption-bottom text-sm", className)}
+      className={cn(
+        "w-full caption-bottom text-sm",
+        "border-separate border-spacing-0",
+        className
+      )}
       {...props}
     />
   </div>
@@ -87,7 +92,15 @@ const TableHeader = React.forwardRef<
   HTMLTableSectionElement,
   React.HTMLAttributes<HTMLTableSectionElement>
 >(({ className, ...props }, ref) => (
-  <thead ref={ref} className={cn("[&_tr]:border-b", className)} {...props} />
+  <thead
+    ref={ref}
+    className={cn(
+      "[&_tr]:border-b",
+      "border-charcoal/10 bg-neutral-cream/30",
+      className
+    )}
+    {...props}
+  />
 ))
 TableHeader.displayName = "TableHeader"
 
@@ -120,7 +133,9 @@ const TableFooter = React.forwardRef<
   <tfoot
     ref={ref}
     className={cn(
-      "border-t bg-neutral-cream/50 font-medium [&>tr]:last:border-b-0",
+      "border-t border-charcoal/10",
+      "bg-neutral-cream/50 font-medium",
+      "[&>tr]:last:border-b-0",
       className
     )}
     {...props}
@@ -132,7 +147,6 @@ TableFooter.displayName = "TableFooter"
  * @component TableRow
  * @description Linha da tabela com suporte a hover e seleção
  * @param {string} [className] - Classes CSS adicionais
- * @param {string} [data-state] - Estado da linha ("selected" para selecionada)
  */
 const TableRow = React.forwardRef<
   HTMLTableRowElement,
@@ -141,7 +155,10 @@ const TableRow = React.forwardRef<
   <tr
     ref={ref}
     className={cn(
-      "border-b transition-colors hover:bg-neutral-cream/50 data-[state=selected]:bg-neutral-cream/50",
+      "border-b border-charcoal/10",
+      "transition-colors",
+      "hover:bg-hover-light",
+      "data-[state=selected]:bg-neutral-cream/50",
       className
     )}
     {...props}
@@ -161,7 +178,10 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      "h-12 px-4 text-left align-middle font-medium text-charcoal/60 [&:has([role=checkbox])]:pr-0",
+      "h-12 px-4 text-left align-middle font-medium",
+      "text-text-secondary",
+      "[&:has([role=checkbox])]:pr-0",
+      "transition-colors",
       className
     )}
     {...props}
@@ -180,7 +200,12 @@ const TableCell = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <td
     ref={ref}
-    className={cn("p-4 align-middle [&:has([role=checkbox])]:pr-0", className)}
+    className={cn(
+      "p-4 align-middle",
+      "text-text-primary",
+      "[&:has([role=checkbox])]:pr-0",
+      className
+    )}
     {...props}
   />
 ))
@@ -197,7 +222,7 @@ const TableCaption = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <caption
     ref={ref}
-    className={cn("mt-4 text-sm text-charcoal/60", className)}
+    className={cn("mt-4 text-sm text-text-secondary", className)}
     {...props}
   />
 ))
