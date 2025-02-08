@@ -5,14 +5,21 @@
 
 import { create } from 'zustand'
 import { toast } from 'sonner'
-import { addDays, format, parse, isWithinInterval, areIntervalsOverlapping, parseISO } from 'date-fns'
+import {
+  addDays,
+  format,
+  parse,
+  isWithinInterval,
+  areIntervalsOverlapping,
+  parseISO,
+} from 'date-fns'
 import { ptBR } from 'date-fns/locale'
-import { 
-  Appointment, 
-  AppointmentFormValues, 
+import {
+  Appointment,
+  AppointmentFormValues,
   ScheduleFilters,
   TimeSlot,
-  BusinessHours 
+  BusinessHours,
 } from '@/types/schedule'
 import { useServiceStore } from '@/store/service-store'
 import { useCustomerStore } from '@/store/customer-store'
@@ -27,7 +34,7 @@ const businessHours: BusinessHours = {
   start: '09:00',
   end: '18:00',
   interval: 30, // 30 minutos
-  daysOff: [0] // domingo
+  daysOff: [0], // domingo
 }
 
 /**
@@ -35,8 +42,8 @@ const businessHours: BusinessHours = {
  * @description Estrutura de erro customizada para operações com agendamentos
  */
 interface AppointmentError extends Error {
-  message: string;
-  cause?: PostgrestError;
+  message: string
+  cause?: PostgrestError
 }
 
 /**
@@ -65,7 +72,12 @@ interface ScheduleState {
     /** Retorna os horários disponíveis para uma data e duração específicas */
     getAvailableTimeSlots: (date: Date, duration: string) => TimeSlot[]
     /** Verifica se um horário específico está disponível */
-    checkAvailability: (date: Date, time: string, duration: string, currentAppointmentId?: string) => boolean
+    checkAvailability: (
+      date: Date,
+      time: string,
+      duration: string,
+      currentAppointmentId?: string
+    ) => boolean
   }
 }
 
@@ -74,12 +86,12 @@ interface ScheduleState {
  * @description Hook Zustand para gerenciamento de estado dos agendamentos
  * @example
  * const { appointments, isLoading, actions } = useScheduleStore()
- * 
+ *
  * // Buscar agendamentos
  * useEffect(() => {
  *   actions.fetchAppointments()
  * }, [])
- * 
+ *
  * // Verificar disponibilidade
  * const isAvailable = actions.checkAvailability(
  *   new Date(),
@@ -101,7 +113,7 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
       try {
         set({ isLoading: true })
         const { filters } = get()
-        
+
         let query = supabase.from('appointments').select(`
           *,
           client:clients(full_name, phone),
@@ -110,7 +122,9 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
 
         // Aplicar filtros
         if (filters.search) {
-          query = query.or(`client.full_name.ilike.%${filters.search}%,service.name.ilike.%${filters.search}%`)
+          query = query.or(
+            `client.full_name.ilike.%${filters.search}%,service.name.ilike.%${filters.search}%`
+          )
         }
 
         // Filtrar por intervalo de datas ou data específica
@@ -124,7 +138,7 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
           startOfDay.setHours(0, 0, 0, 0)
           const endOfDay = new Date(filters.date)
           endOfDay.setHours(23, 59, 59, 999)
-          
+
           query = query
             .gte('scheduled_time', startOfDay.toISOString())
             .lte('scheduled_time', endOfDay.toISOString())
@@ -189,20 +203,22 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
         const { data: newAppointment, error } = await supabase
           .from('appointments')
           .insert([data])
-          .select(`
+          .select(
+            `
             *,
             client:clients(full_name, phone),
             service:services(name, duration, base_price)
-          `)
+          `
+          )
           .single()
 
         if (error) throw error
 
-        set((state) => ({
-          appointments: [...state.appointments, newAppointment]
+        set(state => ({
+          appointments: [...state.appointments, newAppointment],
         }))
       } catch (error) {
-        const appointmentError = error as AppointmentError;
+        const appointmentError = error as AppointmentError
         console.error('Error creating appointment:', appointmentError)
         toast.error(appointmentError.message || 'Erro ao criar agendamento')
       } finally {
@@ -246,24 +262,91 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
           .from('appointments')
           .update(data)
           .eq('id', id)
-          .select(`
+          .select(
+            `
             *,
             client:clients(full_name, phone),
             service:services(name, duration, base_price)
-          `)
+          `
+          )
           .single()
 
         if (error) throw error
 
-        set((state) => ({
-          appointments: state.appointments.map(appointment =>
-            appointment.id === id ? updatedAppointment : appointment
+        // Se o status for 'completed', atualizar os pontos do cliente
+        if (data.status === 'completed') {
+          const { useLoyaltyStore } = await import('@/store/loyalty-store')
+          const loyaltyStore = useLoyaltyStore.getState()
+
+          // Calcular pontos ganhos neste atendimento
+          const pointsEarned = loyaltyStore.actions.calculatePoints(
+            data.service_id,
+            data.final_price
           )
+
+          if (pointsEarned > 0) {
+            // Obter o usuário atual
+            const {
+              data: { user },
+              error: userError,
+            } = await supabase.auth.getUser()
+            if (userError) throw userError
+            if (!user) throw new Error('Usuário não autenticado')
+
+            // Buscar pontos atuais do cliente
+            const { data: currentPoints } = await supabase
+              .from('loyalty_points')
+              .select('points_earned, points_spent')
+              .eq('client_id', data.client_id)
+              .single()
+
+            // Calcular novos pontos
+            const newPointsEarned = (currentPoints?.points_earned || 0) + pointsEarned
+
+            // Atualizar ou criar registro de pontos
+            const { data: loyaltyData, error: loyaltyError } = await supabase
+              .from('loyalty_points')
+              .upsert(
+                {
+                  owner_id: user.id,
+                  client_id: data.client_id,
+                  points_earned: newPointsEarned,
+                  points_spent: currentPoints?.points_spent || 0,
+                },
+                {
+                  onConflict: 'client_id',
+                  ignoreDuplicates: false,
+                }
+              )
+              .select()
+              .single()
+
+            if (loyaltyError) throw loyaltyError
+
+            // Registrar no histórico de pontos
+            const { error: historyError } = await supabase.from('points_history').insert({
+              owner_id: user.id,
+              client_id: data.client_id,
+              appointment_id: id,
+              points: pointsEarned,
+              type: 'earned',
+              description: `Pontos ganhos pelo serviço: ${service.name}`,
+            })
+
+            if (historyError) throw historyError
+          }
+        }
+
+        // Atualizar o estado local
+        set(state => ({
+          appointments: state.appointments.map(a =>
+            a.id === id ? { ...a, ...updatedAppointment } : a
+          ),
         }))
 
         toast.success('Agendamento atualizado com sucesso!')
       } catch (error) {
-        const appointmentError = error as AppointmentError;
+        const appointmentError = error as AppointmentError
         console.error('Error updating appointment:', appointmentError)
         toast.error(appointmentError.message || 'Erro ao atualizar agendamento')
       } finally {
@@ -275,15 +358,12 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
       try {
         set({ isLoading: true })
 
-        const { error } = await supabase
-          .from('appointments')
-          .delete()
-          .eq('id', id)
+        const { error } = await supabase.from('appointments').delete().eq('id', id)
 
         if (error) throw error
 
-        set((state) => ({
-          appointments: state.appointments.filter(appointment => appointment.id !== id)
+        set(state => ({
+          appointments: state.appointments.filter(appointment => appointment.id !== id),
         }))
 
         toast.success('Agendamento excluído com sucesso!')
@@ -296,7 +376,7 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
     },
 
     updateFilters: (filters: Partial<ScheduleFilters>) => {
-      set((state) => ({
+      set(state => ({
         filters: {
           ...state.filters,
           ...filters,
@@ -311,10 +391,10 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
     getAvailableTimeSlots: (date: Date, duration: string) => {
       const { businessHours, appointments } = get()
       const timeSlots: TimeSlot[] = []
-      
+
       // Converter duração para minutos
       const [hours, minutes] = duration.split(':').map(Number)
-      const durationInMinutes = (hours * 60) + minutes
+      const durationInMinutes = hours * 60 + minutes
 
       // Gerar horários possíveis
       const startTime = parse(businessHours.start, 'HH:mm', date)
@@ -332,14 +412,16 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
         // Encontrar agendamento existente neste horário
         const existingAppointment = appointments.find(appointment => {
           const appointmentDate = new Date(appointment.scheduled_time)
-          return format(appointmentDate, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd') && 
-                 format(appointmentDate, 'HH:mm') === timeString
+          return (
+            format(appointmentDate, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd') &&
+            format(appointmentDate, 'HH:mm') === timeString
+          )
         })
 
         timeSlots.push({
           time: timeString,
           available: isAvailable,
-          appointment: existingAppointment
+          appointment: existingAppointment,
         })
 
         // Avançar para o próximo intervalo
@@ -349,14 +431,19 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
       return timeSlots
     },
 
-    checkAvailability: (date: Date, time: string, duration: string, currentAppointmentId?: string) => {
+    checkAvailability: (
+      date: Date,
+      time: string,
+      duration: string,
+      currentAppointmentId?: string
+    ) => {
       const appointments = get().appointments
       const [hours, minutes] = time.split(':').map(Number)
       const [durationHours, durationMinutes] = duration.split(':').map(Number)
-      
+
       const startTime = new Date(date)
       startTime.setHours(hours, minutes, 0, 0)
-      
+
       const endTime = new Date(startTime)
       endTime.setHours(endTime.getHours() + durationHours)
       endTime.setMinutes(endTime.getMinutes() + durationMinutes)
@@ -369,7 +456,8 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
         }
 
         const appointmentStart = parseISO(appointment.scheduled_time)
-        const [appDurationHours, appDurationMinutes] = appointment.actual_duration?.split(':') || appointment.service.duration.split(':')
+        const [appDurationHours, appDurationMinutes] =
+          appointment.actual_duration?.split(':') || appointment.service.duration.split(':')
         const appointmentEnd = new Date(appointmentStart)
         appointmentEnd.setHours(appointmentEnd.getHours() + parseInt(appDurationHours))
         appointmentEnd.setMinutes(appointmentEnd.getMinutes() + parseInt(appDurationMinutes))
@@ -383,6 +471,6 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
       })
 
       return !hasConflict
-    }
+    },
   },
-})) 
+}))

@@ -3,7 +3,7 @@
 /**
  * @component Sidebar
  * @description Barra lateral de navegação com suporte a responsividade e categorização de itens
- * 
+ *
  * @features
  * - Navegação categorizada (Principal, Gestão, Sistema)
  * - Suporte a ícones e indicador de página ativa
@@ -11,10 +11,12 @@
  * - Botão de logout integrado
  */
 
-import Link from "next/link"
-import { usePathname } from "next/navigation"
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
+import Link from 'next/link'
+import { usePathname, useRouter } from 'next/navigation'
+import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
+import { createClient } from '@/lib/supabase/client'
+import { toast } from 'sonner'
 import {
   LayoutGrid,
   Scissors,
@@ -25,8 +27,9 @@ import {
   LogOut,
   X,
   Calendar,
-  ClipboardList
-} from "lucide-react"
+  ClipboardList,
+  Star,
+} from 'lucide-react'
 
 /**
  * @const mainNavItems
@@ -34,8 +37,8 @@ import {
  */
 const mainNavItems = [
   {
-    title: "Dashboard",
-    href: "/dashboard",
+    title: 'Dashboard',
+    href: '/dashboard',
     icon: LayoutGrid,
   },
 ]
@@ -46,30 +49,30 @@ const mainNavItems = [
  */
 const managementNavItems = [
   {
-    title: "Agenda",
-    href: "/agenda",
+    title: 'Agenda',
+    href: '/agenda',
     icon: Calendar,
   },
   {
-    title: "Atendimentos",
-    href: "/atendimentos",
+    title: 'Atendimentos',
+    href: '/atendimentos',
     icon: ClipboardList,
   },
   {
-    title: "Financeiro",
-    href: "/finance",
+    title: 'Financeiro',
+    href: '/finance',
     icon: DollarSign,
   },
   {
-    title: "Clientes",
-    href: "/customers",
+    title: 'Clientes',
+    href: '/customers',
     icon: Users,
   },
   {
-    title: "Serviços",
-    href: "/services",
+    title: 'Serviços',
+    href: '/services',
     icon: Scissors,
-  }
+  },
 ]
 
 /**
@@ -78,13 +81,18 @@ const managementNavItems = [
  */
 const systemNavItems = [
   {
-    title: "Usuários",
-    href: "/users",
+    title: 'Usuários',
+    href: '/users',
     icon: UserCircle,
   },
   {
-    title: "Configurações",
-    href: "/settings",
+    title: 'Sistema de Fidelidade',
+    href: '/configuracoes/fidelidade',
+    icon: Star,
+  },
+  {
+    title: 'Configurações',
+    href: '/settings',
     icon: Settings,
   },
 ]
@@ -106,6 +114,22 @@ interface SidebarProps {
  */
 export function Sidebar({ onClose }: SidebarProps) {
   const pathname = usePathname()
+  const router = useRouter()
+  const supabase = createClient()
+
+  const handleLogout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut()
+      if (error) throw error
+
+      // Redirecionar para a página de login
+      router.push('/login')
+      toast.success('Logout realizado com sucesso')
+    } catch (error) {
+      console.error('Error logging out:', error)
+      toast.error('Erro ao realizar logout')
+    }
+  }
 
   return (
     <aside className="flex h-screen w-[280px] lg:w-64 flex-col bg-charcoal">
@@ -134,46 +158,41 @@ export function Sidebar({ onClose }: SidebarProps) {
       <nav className="flex-1 space-y-8 lg:space-y-6 p-4 lg:px-4 lg:py-6">
         {/* Main */}
         <div>
-          {mainNavItems.map((item) => (
-            <NavItem
-              key={item.href}
-              item={item}
-              isActive={pathname === item.href}
-            />
+          {mainNavItems.map(item => (
+            <NavItem key={item.href} item={item} isActive={pathname === item.href} />
           ))}
         </div>
 
         {/* Management */}
         <div>
-          <p className="mb-3 lg:mb-2 px-3 lg:px-2 text-sm lg:text-xs font-medium text-white/40">GESTÃO</p>
+          <p className="mb-3 lg:mb-2 px-3 lg:px-2 text-sm lg:text-xs font-medium text-white/40">
+            GESTÃO
+          </p>
           <div className="space-y-1">
-            {managementNavItems.map((item) => (
-              <NavItem
-                key={item.href}
-                item={item}
-                isActive={pathname === item.href}
-              />
+            {managementNavItems.map(item => (
+              <NavItem key={item.href} item={item} isActive={pathname === item.href} />
             ))}
           </div>
         </div>
 
         {/* System */}
         <div>
-          <p className="mb-3 lg:mb-2 px-3 lg:px-2 text-sm lg:text-xs font-medium text-white/40">SISTEMA</p>
+          <p className="mb-3 lg:mb-2 px-3 lg:px-2 text-sm lg:text-xs font-medium text-white/40">
+            SISTEMA
+          </p>
           <div className="space-y-1">
-            {systemNavItems.map((item) => (
-              <NavItem
-                key={item.href}
-                item={item}
-                isActive={pathname === item.href}
-              />
+            {systemNavItems.map(item => (
+              <NavItem key={item.href} item={item} isActive={pathname === item.href} />
             ))}
           </div>
         </div>
       </nav>
 
       {/* Logout */}
-      <button className="flex items-center gap-3 px-6 py-5 lg:py-4 text-base lg:text-sm text-white/60 transition-colors hover:text-white">
+      <button
+        onClick={handleLogout}
+        className="flex items-center gap-3 px-6 py-5 lg:py-4 text-base lg:text-sm text-white/60 transition-colors hover:text-white hover:bg-white/5"
+      >
         <LogOut className="h-5 w-5 lg:h-4 lg:w-4" />
         Sair
       </button>
@@ -212,14 +231,12 @@ function NavItem({ item, isActive }: NavItemProps) {
     <Link
       href={item.href}
       className={cn(
-        "flex items-center gap-3 rounded-lg px-3 py-2.5 lg:gap-2 lg:px-2 lg:py-1.5 text-base lg:text-sm transition-colors",
-        isActive
-          ? "bg-white/10 text-white"
-          : "text-white/60 hover:bg-white/5 hover:text-white"
+        'flex items-center gap-3 rounded-lg px-3 py-2.5 lg:gap-2 lg:px-2 lg:py-1.5 text-base lg:text-sm transition-colors',
+        isActive ? 'bg-white/10 text-white' : 'text-white/60 hover:bg-white/5 hover:text-white'
       )}
     >
       <Icon className="h-5 w-5 lg:h-4 lg:w-4" />
       {item.title}
     </Link>
   )
-} 
+}
