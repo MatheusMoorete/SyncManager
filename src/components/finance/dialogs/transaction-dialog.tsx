@@ -75,7 +75,7 @@ export function TransactionDialog({
     defaultValues: {
       type: transaction?.type || 'income',
       category: transaction?.category || '',
-      amount: transaction?.amount ? String(transaction.amount) : '',
+      amount: transaction?.amount || 0,
       payment_method: transaction?.payment_method || undefined,
       notes: transaction?.notes || '',
       transaction_date: transaction?.transaction_date
