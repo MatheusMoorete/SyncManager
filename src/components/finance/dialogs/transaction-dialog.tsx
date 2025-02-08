@@ -68,8 +68,18 @@ export function TransactionDialog({ trigger }: TransactionDialogProps) {
   const onSubmit = async (data: TransactionFormValues) => {
     try {
       setIsSubmitting(true)
+      console.log('Data selecionada no form:', data.transaction_date)
+
+      const [year, month, day] = data.transaction_date.split('-').map(Number)
+      console.log('Valores extraídos:', { year, month, day })
+
+      const adjustedDate = new Date(year, month - 1, day, 12, 0, 0)
+      console.log('Data ajustada:', adjustedDate)
+      console.log('Data ajustada ISO:', adjustedDate.toISOString())
+
       await actions.addTransaction({
         ...data,
+        transaction_date: adjustedDate.toISOString(),
         client_id: null,
         receipt_url: null,
         notes: data.notes || null,

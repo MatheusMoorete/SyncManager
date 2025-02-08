@@ -229,6 +229,8 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
         } = await supabase.auth.getUser()
         if (!user) throw new Error('Usuário não autenticado')
 
+        console.log('Data recebida na store:', transaction.transaction_date)
+
         const { data, error } = await supabase
           .from('transactions')
           .insert([
@@ -242,6 +244,8 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
           .single()
 
         if (error) throw error
+
+        console.log('Data retornada do Supabase:', data.transaction_date)
 
         // Atualiza o estado de forma otimista
         set(state => ({

@@ -176,9 +176,18 @@ export default function FinancePage() {
                 {transactions.map(transaction => (
                   <TableRow key={transaction.id} className="hover:bg-neutral-cream/10">
                     <TableCell className="font-medium whitespace-nowrap">
-                      {format(new Date(transaction.transaction_date), 'dd/MM/yyyy', {
-                        locale: ptBR,
-                      })}
+                      {(() => {
+                        console.log('Data original da transação:', transaction.transaction_date)
+                        const datePart = transaction.transaction_date.split('T')[0]
+                        console.log('Parte da data:', datePart)
+                        const [year, month, day] = datePart.split('-').map(Number)
+                        const date = new Date(year, month - 1, day)
+                        date.setHours(12, 0, 0, 0) // Set to noon to avoid timezone issues
+                        console.log('Objeto Date criado:', date)
+                        const formattedDate = format(date, 'dd/MM/yyyy', { locale: ptBR })
+                        console.log('Data formatada:', formattedDate)
+                        return formattedDate
+                      })()}
                     </TableCell>
                     <TableCell>
                       <div className="flex flex-col sm:flex-row sm:items-center gap-1">
