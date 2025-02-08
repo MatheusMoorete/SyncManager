@@ -48,11 +48,11 @@ export function AppLayout({ children, className }: AppLayoutProps) {
     <TooltipProvider>
       <>
         <div className={cn('min-h-screen bg-background font-sans antialiased', className)}>
-          <div className="flex h-screen">
+          <div className="flex h-screen overflow-hidden">
             {/* Mobile Sidebar Overlay */}
             {isSidebarOpen && (
               <div
-                className="fixed inset-0 bg-charcoal/50 backdrop-blur-sm lg:hidden"
+                className="fixed inset-0 bg-charcoal/50 backdrop-blur-sm lg:hidden z-40"
                 onClick={() => setIsSidebarOpen(false)}
               />
             )}
@@ -67,7 +67,7 @@ export function AppLayout({ children, className }: AppLayoutProps) {
             </div>
 
             {/* Main Content */}
-            <div className="flex flex-1 flex-col">
+            <div className="flex flex-1 flex-col w-full">
               <Header
                 user={{
                   name: 'Matheus Moorete',
@@ -75,7 +75,7 @@ export function AppLayout({ children, className }: AppLayoutProps) {
                 }}
                 onMenuClick={() => setIsSidebarOpen(true)}
               />
-              <main className="flex-1 overflow-y-auto bg-neutral-cream/50">{children}</main>
+              <main className="flex-1 overflow-y-auto bg-neutral-cream/50 pb-safe">{children}</main>
             </div>
           </div>
           <Toaster position="top-center" expand richColors />

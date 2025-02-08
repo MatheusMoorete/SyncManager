@@ -42,7 +42,7 @@ function OverviewCard({
         </Tooltip>
       </CardHeader>
       <CardContent>
-        <div className="text-2xl font-bold">
+        <div className="text-xl sm:text-2xl font-bold">
           {new Intl.NumberFormat('pt-BR', {
             style: 'currency',
             currency: 'BRL',
@@ -60,7 +60,7 @@ export function Overview() {
   if (!stats) return null
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
       <OverviewCard
         title="Receita Total"
         value={stats.totalIncome}

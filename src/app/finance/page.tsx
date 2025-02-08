@@ -60,16 +60,18 @@ export default function FinancePage() {
   }
 
   return (
-    <div className="flex-1 space-y-6 p-4 md:p-8 bg-neutral-cream/20">
+    <div className="flex-1 space-y-6 p-4 md:p-8 bg-neutral-cream/20 overflow-x-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-3xl font-semibold font-heading text-heading">Financeiro</h2>
+          <h2 className="text-2xl md:text-3xl font-semibold font-heading text-heading">
+            Financeiro
+          </h2>
           <p className="text-sm text-muted-foreground">Gerencie as finanças do seu negócio</p>
         </div>
         <TransactionDialog
           trigger={
-            <Button className="bg-terracotta hover:bg-terracotta/90 text-white">
+            <Button className="w-full sm:w-auto bg-terracotta hover:bg-terracotta/90 text-white">
               <PlusIcon className="mr-2 h-4 w-4" /> Nova Transação
             </Button>
           }
@@ -141,12 +143,12 @@ export default function FinancePage() {
       {/* Transações Recentes */}
       <Card className="bg-white/95 hover:bg-white/100 transition-all shadow-lg hover:shadow-xl border-none ring-1 ring-charcoal/5">
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <CardTitle className="text-lg">Transações Recentes</CardTitle>
-            <div className="flex gap-2">
-              <Input placeholder="Buscar transações..." className="max-w-[200px]" />
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Input placeholder="Buscar transações..." className="w-full sm:w-[200px]" />
               <Select>
-                <SelectTrigger className="w-[140px]">
+                <SelectTrigger className="w-full sm:w-[140px]">
                   <SelectValue placeholder="Filtrar" />
                 </SelectTrigger>
                 <SelectContent>
@@ -158,47 +160,62 @@ export default function FinancePage() {
             </div>
           </div>
         </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Data</TableHead>
-                <TableHead>Descrição</TableHead>
-                <TableHead>Categoria</TableHead>
-                <TableHead>Método</TableHead>
-                <TableHead className="text-right">Valor</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {transactions.map(transaction => (
-                <TableRow key={transaction.id} className="hover:bg-neutral-cream/10">
-                  <TableCell className="font-medium">
-                    {format(new Date(transaction.transaction_date), 'dd/MM/yyyy', {
-                      locale: ptBR,
-                    })}
-                  </TableCell>
-                  <TableCell>{transaction.notes || '-'}</TableCell>
-                  <TableCell>{transaction.category}</TableCell>
-                  <TableCell>
-                    {transaction.payment_method
-                      ? transaction.payment_method
-                          .split('_')
-                          .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-                          .join(' ')
-                      : '-'}
-                  </TableCell>
-                  <TableCell
-                    className={`text-right font-medium ${
-                      transaction.type === 'income' ? 'text-soft-sage' : 'text-terracotta'
-                    }`}
-                  >
-                    {transaction.type === 'income' ? '+' : '-'} R${' '}
-                    {Math.abs(transaction.amount).toFixed(2)}
-                  </TableCell>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Data</TableHead>
+                  <TableHead>Descrição</TableHead>
+                  <TableHead className="hidden sm:table-cell">Categoria</TableHead>
+                  <TableHead className="hidden sm:table-cell">Método</TableHead>
+                  <TableHead className="text-right">Valor</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {transactions.map(transaction => (
+                  <TableRow key={transaction.id} className="hover:bg-neutral-cream/10">
+                    <TableCell className="font-medium whitespace-nowrap">
+                      {format(new Date(transaction.transaction_date), 'dd/MM/yyyy', {
+                        locale: ptBR,
+                      })}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-1">
+                        <span>{transaction.notes || '-'}</span>
+                        <span className="text-xs text-muted-foreground sm:hidden">
+                          {transaction.category} •{' '}
+                          {transaction.payment_method
+                            ? transaction.payment_method
+                                .split('_')
+                                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                                .join(' ')
+                            : '-'}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="hidden sm:table-cell">{transaction.category}</TableCell>
+                    <TableCell className="hidden sm:table-cell">
+                      {transaction.payment_method
+                        ? transaction.payment_method
+                            .split('_')
+                            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                            .join(' ')
+                        : '-'}
+                    </TableCell>
+                    <TableCell
+                      className={`text-right font-medium whitespace-nowrap ${
+                        transaction.type === 'income' ? 'text-soft-sage' : 'text-terracotta'
+                      }`}
+                    >
+                      {transaction.type === 'income' ? '+' : '-'} R${' '}
+                      {Math.abs(transaction.amount).toFixed(2)}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
     </div>
