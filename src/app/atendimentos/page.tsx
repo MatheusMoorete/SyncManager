@@ -3,14 +3,14 @@
 /**
  * @component AtendimentosPage
  * @description Página principal de gerenciamento de atendimentos com suporte a filtros, busca e atualização de status
- * 
+ *
  * @features
  * - Filtros por período (hoje, semana, mês)
  * - Busca por cliente ou serviço
  * - Atualização de status com diálogo de conclusão
  * - Visualização em lista com scroll infinito
  * - Responsivo mobile-first
- * 
+ *
  * @example
  * // Rota: /atendimentos
  * <AtendimentosPage />
@@ -25,7 +25,7 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -38,16 +38,16 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-} from "@/components/ui/dialog"
+} from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Search, Calendar, ChevronDown, Loader2, Filter } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 
 /** Status possíveis para um atendimento */
-type AppointmentStatus = 'scheduled' | 'completed' | 'canceled' | 'no_show';
+type AppointmentStatus = 'scheduled' | 'completed' | 'canceled' | 'no_show'
 /** Status possíveis para filtro, incluindo 'all' */
-type FilterStatus = AppointmentStatus | 'all';
+type FilterStatus = AppointmentStatus | 'all'
 
 /**
  * @interface CompletionDialogData
@@ -72,7 +72,7 @@ export default function AtendimentosPage() {
   const [completionData, setCompletionData] = useState({
     duration: '',
     finalPrice: '',
-    notes: ''
+    notes: '',
   })
 
   useEffect(() => {
@@ -84,7 +84,7 @@ export default function AtendimentosPage() {
       search: searchTerm,
       startDate: start,
       endDate: end,
-      status: statusFilter !== 'all' ? statusFilter : undefined
+      status: statusFilter !== 'all' ? statusFilter : undefined,
     })
     actions.fetchAppointments()
   }, [actions, searchTerm, statusFilter, startDate, endDate])
@@ -105,12 +105,12 @@ export default function AtendimentosPage() {
         appointmentId,
         serviceName: appointment.service.name,
         basePrice: appointment.service.base_price,
-        clientName: appointment.client.full_name
+        clientName: appointment.client.full_name,
       })
       setCompletionData({
         duration: appointment.service.duration,
         finalPrice: appointment.service.base_price.toString(),
-        notes: appointment.notes || ''
+        notes: appointment.notes || '',
       })
       return
     }
@@ -125,11 +125,15 @@ export default function AtendimentosPage() {
    * @param status Novo status
    * @param completionData Dados adicionais para conclusão (opcional)
    */
-  const updateAppointmentStatus = async (appointmentId: string, status: AppointmentStatus, completionData?: {
-    duration: string
-    finalPrice: number
-    notes: string
-  }) => {
+  const updateAppointmentStatus = async (
+    appointmentId: string,
+    status: AppointmentStatus,
+    completionData?: {
+      duration: string
+      finalPrice: number
+      notes: string
+    }
+  ) => {
     const appointment = appointments.find(a => a.id === appointmentId)
     if (!appointment) return
 
@@ -143,11 +147,26 @@ export default function AtendimentosPage() {
         status,
         actual_duration: completionData?.duration || undefined,
         notes: completionData?.notes || undefined,
-        discount: appointment.discount || undefined
+        discount: appointment.discount || undefined,
       })
-      
+
+      // Se o status for 'completed', criar uma transação financeira
       if (status === 'completed') {
-        toast.success('Atendimento concluído com sucesso!')
+        const { useFinanceStore } = await import('@/store/finance-store')
+        const financeStore = useFinanceStore.getState()
+
+        await financeStore.actions.addTransaction({
+          type: 'income',
+          category: 'Serviços',
+          amount: completionData?.finalPrice || appointment.final_price,
+          payment_method: 'pix', // Método padrão, pode ser ajustado conforme necessário
+          transaction_date: new Date().toISOString(),
+          notes: `Atendimento: ${appointment.service.name} - Cliente: ${appointment.client.full_name}`,
+          client_id: appointment.client_id,
+          receipt_url: null, // Campo obrigatório, mas opcional na prática
+        })
+
+        toast.success('Atendimento concluído e receita registrada com sucesso!')
       }
     } catch (error) {
       console.error('Error updating appointment:', error)
@@ -181,15 +200,15 @@ export default function AtendimentosPage() {
     await updateAppointmentStatus(completionDialog.appointmentId, 'completed', {
       duration: completionData.duration,
       finalPrice,
-      notes: completionData.notes
+      notes: completionData.notes,
     })
   }
 
   const statusMap = {
-    scheduled: { label: 'Agendado', class: 'bg-emerald-100 text-emerald-800' },
+    scheduled: { label: 'Agendado', class: 'bg-blue-100 text-blue-800' },
     completed: { label: 'Concluído', class: 'bg-green-100 text-green-800' },
     canceled: { label: 'Cancelado', class: 'bg-rose-100 text-rose-800' },
-    no_show: { label: 'Não Compareceu', class: 'bg-slate-100 text-slate-800' }
+    no_show: { label: 'Não Compareceu', class: 'bg-gray-100 text-gray-800' },
   }
 
   /**
@@ -199,7 +218,7 @@ export default function AtendimentosPage() {
    */
   const handleFilterPeriod = (period: 'today' | 'week' | 'month' | 'all') => {
     const today = new Date()
-    
+
     switch (period) {
       case 'today':
         setStartDate(format(today, 'yyyy-MM-dd'))
@@ -238,13 +257,13 @@ export default function AtendimentosPage() {
               Gerencie os atendimentos e acompanhe o histórico dos clientes
             </p>
           </div>
-          
+
           <div className="relative w-full md:w-[300px]">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input 
-              placeholder="Buscar por cliente ou serviço..." 
+            <Input
+              placeholder="Buscar por cliente ou serviço..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={e => setSearchTerm(e.target.value)}
               className="pl-9"
             />
           </div>
@@ -258,32 +277,20 @@ export default function AtendimentosPage() {
               size="sm"
               onClick={() => handleFilterPeriod('today')}
               className={cn(
-                startDate === format(new Date(), 'yyyy-MM-dd') && 
-                endDate === format(new Date(), 'yyyy-MM-dd') && 
-                'bg-primary text-primary-foreground hover:bg-primary/90'
+                startDate === format(new Date(), 'yyyy-MM-dd') &&
+                  endDate === format(new Date(), 'yyyy-MM-dd') &&
+                  'bg-primary text-primary-foreground hover:bg-primary/90'
               )}
             >
               Hoje
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleFilterPeriod('week')}
-            >
+            <Button variant="outline" size="sm" onClick={() => handleFilterPeriod('week')}>
               Esta Semana
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleFilterPeriod('month')}
-            >
+            <Button variant="outline" size="sm" onClick={() => handleFilterPeriod('month')}>
               Este Mês
             </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => handleFilterPeriod('all')}
-            >
+            <Button variant="outline" size="sm" onClick={() => handleFilterPeriod('all')}>
               Todos
             </Button>
           </div>
@@ -296,18 +303,14 @@ export default function AtendimentosPage() {
           >
             <Filter className="h-4 w-4" />
             Filtros Avançados
-            <ChevronDown className={cn(
-              "h-4 w-4 transition-transform",
-              showFilters && "transform rotate-180"
-            )} />
+            <ChevronDown
+              className={cn('h-4 w-4 transition-transform', showFilters && 'transform rotate-180')}
+            />
           </Button>
         </div>
 
         {/* Filtros Avançados */}
-        <Card className={cn(
-          "p-4 space-y-4",
-          !showFilters && "hidden"
-        )}>
+        <Card className={cn('p-4 space-y-4', !showFilters && 'hidden')}>
           <div className="grid gap-4 md:grid-cols-3">
             <Select
               value={statusFilter}
@@ -330,7 +333,7 @@ export default function AtendimentosPage() {
               <Input
                 type="date"
                 value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
+                onChange={e => setStartDate(e.target.value)}
                 className="w-full"
               />
             </div>
@@ -340,7 +343,7 @@ export default function AtendimentosPage() {
               <Input
                 type="date"
                 value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
+                onChange={e => setEndDate(e.target.value)}
                 className="w-full"
               />
             </div>
@@ -351,7 +354,7 @@ export default function AtendimentosPage() {
         <Card className="p-4">
           <ScrollArea className="h-[calc(100vh-280px)]">
             <div className="space-y-4">
-              {appointments.map((appointment) => (
+              {appointments.map(appointment => (
                 <Card key={appointment.id} className="p-4">
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                     <div className="space-y-3">
@@ -359,14 +362,20 @@ export default function AtendimentosPage() {
                         <div className="flex items-center gap-2">
                           <Calendar className="h-4 w-4 text-muted-foreground" />
                           <span className="text-sm">
-                            {format(parseISO(appointment.scheduled_time), "PPP 'às' HH:mm", { locale: ptBR })}
+                            {format(parseISO(appointment.scheduled_time), "PPP 'às' HH:mm", {
+                              locale: ptBR,
+                            })}
                           </span>
                         </div>
                         <div className="flex flex-col md:flex-row md:items-center md:gap-2">
-                          <span className="text-sm font-medium">{appointment.client.full_name}</span>
+                          <span className="text-sm font-medium">
+                            {appointment.client.full_name}
+                          </span>
                           {appointment.client.phone && (
                             <>
-                              <span className="hidden md:inline text-sm text-muted-foreground">•</span>
+                              <span className="hidden md:inline text-sm text-muted-foreground">
+                                •
+                              </span>
                               <span className="text-sm">{appointment.client.phone}</span>
                             </>
                           )}
@@ -377,24 +386,26 @@ export default function AtendimentosPage() {
                           <span className="text-sm">R$ {appointment.final_price.toFixed(2)}</span>
                         </div>
                         {appointment.notes && (
-                          <div className="text-sm text-muted-foreground">
-                            {appointment.notes}
-                          </div>
+                          <div className="text-sm text-muted-foreground">{appointment.notes}</div>
                         )}
                       </div>
                     </div>
 
                     <div className="flex flex-col md:flex-row items-start md:items-center gap-2">
-                      <div className={cn(
-                        'px-2.5 py-0.5 rounded-full text-xs font-semibold',
-                        statusMap[appointment.status].class
-                      )}>
+                      <div
+                        className={cn(
+                          'px-2.5 py-0.5 rounded-full text-xs font-semibold',
+                          statusMap[appointment.status].class
+                        )}
+                      >
                         {statusMap[appointment.status].label}
                       </div>
                       <Select
                         value={appointment.status}
                         disabled={isSaving}
-                        onValueChange={(value: AppointmentStatus) => handleStatusChange(appointment.id, value)}
+                        onValueChange={(value: AppointmentStatus) =>
+                          handleStatusChange(appointment.id, value)
+                        }
                       >
                         <SelectTrigger className="w-[140px]">
                           <SelectValue />
@@ -443,7 +454,9 @@ export default function AtendimentosPage() {
                       <Input
                         placeholder="HH:mm:ss"
                         value={completionData.duration}
-                        onChange={(e) => setCompletionData(prev => ({ ...prev, duration: e.target.value }))}
+                        onChange={e =>
+                          setCompletionData(prev => ({ ...prev, duration: e.target.value }))
+                        }
                       />
                     </div>
 
@@ -458,7 +471,9 @@ export default function AtendimentosPage() {
                           className="pl-8"
                           placeholder="0,00"
                           value={completionData.finalPrice}
-                          onChange={(e) => setCompletionData(prev => ({ ...prev, finalPrice: e.target.value }))}
+                          onChange={e =>
+                            setCompletionData(prev => ({ ...prev, finalPrice: e.target.value }))
+                          }
                         />
                       </div>
                       <p className="text-xs text-muted-foreground">
@@ -471,7 +486,9 @@ export default function AtendimentosPage() {
                       <Textarea
                         placeholder="Adicione observações sobre o atendimento..."
                         value={completionData.notes}
-                        onChange={(e) => setCompletionData(prev => ({ ...prev, notes: e.target.value }))}
+                        onChange={e =>
+                          setCompletionData(prev => ({ ...prev, notes: e.target.value }))
+                        }
                       />
                     </div>
                   </div>
@@ -487,10 +504,7 @@ export default function AtendimentosPage() {
               >
                 Cancelar
               </Button>
-              <Button
-                onClick={handleCompleteAppointment}
-                disabled={isSaving}
-              >
+              <Button onClick={handleCompleteAppointment} disabled={isSaving}>
                 {isSaving ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -506,4 +520,4 @@ export default function AtendimentosPage() {
       </div>
     </AppLayout>
   )
-} 
+}

@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { createClient } from '@/lib/supabase/client'
 
-interface Transaction {
+export interface Transaction {
   id: string
   owner_id: string
   client_id: string | null
@@ -51,6 +51,10 @@ interface FinanceStore {
     addExpense: (expense: Omit<Expense, 'id' | 'created_at'>) => Promise<void>
     deleteTransaction: (id: string) => Promise<void>
     deleteExpense: (id: string) => Promise<void>
+    updateTransaction: (
+      id: string,
+      transaction: Omit<Transaction, 'id' | 'created_at' | 'owner_id'>
+    ) => Promise<void>
   }
 }
 
@@ -286,6 +290,38 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
         set(state => ({
           expenses: [...state.expenses, data[0]],
         }))
+        await get().actions.calculateStats()
+      } catch (error) {
+        set({ error: (error as Error).message })
+      } finally {
+        set({ isLoading: false })
+      }
+    },
+
+    updateTransaction: async (
+      id: string,
+      transaction: Omit<Transaction, 'id' | 'created_at' | 'owner_id'>
+    ) => {
+      set({ isLoading: true, error: null })
+      try {
+        const { data, error } = await supabase
+          .from('transactions')
+          .update({
+            ...transaction,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', id)
+          .select('*')
+          .single()
+
+        if (error) throw error
+
+        // Atualiza o estado otimisticamente
+        set(state => ({
+          transactions: state.transactions.map(t => (t.id === id ? data : t)),
+        }))
+
+        // Atualiza as estatísticas em segundo plano
         await get().actions.calculateStats()
       } catch (error) {
         set({ error: (error as Error).message })

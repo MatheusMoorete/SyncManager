@@ -7,12 +7,7 @@ import { Appointment } from '@/types/schedule'
 import { useScheduleStore } from '@/store/schedule-store'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,43 +28,46 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
 
   const handleDelete = () => {
-    toast.custom((t) => (
-      <div className="p-4 bg-white rounded-lg shadow-lg border border-charcoal/10">
-        <h3 className="font-medium text-heading mb-2">Confirmar exclusão</h3>
-        <p className="text-sm text-muted-foreground mb-4">
-          Tem certeza que deseja excluir este agendamento?
-        </p>
-        <div className="flex justify-end gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => toast.dismiss(t)}
-            className="hover:bg-neutral-cream/50"
-          >
-            Cancelar
-          </Button>
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={async () => {
-              try {
-                await actions.deleteAppointment(appointment.id)
-                toast.success('Agendamento excluído com sucesso!')
-                toast.dismiss(t)
-              } catch (error) {
-                console.error('Error deleting appointment:', error)
-                toast.error('Erro ao excluir agendamento')
-              }
-            }}
-            className="bg-error hover:bg-error/90 text-white"
-          >
-            Excluir
-          </Button>
+    toast.custom(
+      t => (
+        <div className="p-4 bg-white rounded-lg shadow-lg border border-charcoal/10">
+          <h3 className="font-medium text-heading mb-2">Confirmar exclusão</h3>
+          <p className="text-sm text-muted-foreground mb-4">
+            Tem certeza que deseja excluir este agendamento?
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => toast.dismiss(t)}
+              className="hover:bg-neutral-cream/50"
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={async () => {
+                try {
+                  await actions.deleteAppointment(appointment.id)
+                  toast.success('Agendamento excluído com sucesso!')
+                  toast.dismiss(t)
+                } catch (error) {
+                  console.error('Error deleting appointment:', error)
+                  toast.error('Erro ao excluir agendamento')
+                }
+              }}
+              className="bg-error hover:bg-error/90 text-white"
+            >
+              Excluir
+            </Button>
+          </div>
         </div>
-      </div>
-    ), {
-      duration: Infinity,
-    })
+      ),
+      {
+        duration: Infinity,
+      }
+    )
   }
 
   const handleStatusChange = async (status: 'scheduled' | 'completed' | 'canceled' | 'no_show') => {
@@ -82,9 +80,29 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
         status,
         actual_duration: appointment.actual_duration || undefined,
         notes: appointment.notes || undefined,
-        discount: appointment.discount || undefined
+        discount: appointment.discount || undefined,
       })
-      toast.success('Status atualizado com sucesso!')
+
+      // Se o status for 'completed', criar uma transação financeira
+      if (status === 'completed') {
+        const { useFinanceStore } = await import('@/store/finance-store')
+        const financeStore = useFinanceStore.getState()
+
+        await financeStore.actions.addTransaction({
+          type: 'income',
+          category: 'Serviços',
+          amount: appointment.final_price,
+          payment_method: 'pix', // Método padrão, pode ser ajustado conforme necessário
+          transaction_date: new Date().toISOString(),
+          notes: `Atendimento: ${appointment.service.name} - Cliente: ${appointment.client.full_name}`,
+          client_id: appointment.client_id,
+          receipt_url: null,
+        })
+
+        toast.success('Atendimento concluído e receita registrada com sucesso!')
+      } else {
+        toast.success('Status atualizado com sucesso!')
+      }
     } catch (error) {
       console.error('Error updating appointment status:', error)
       toast.error('Erro ao atualizar status')
@@ -101,9 +119,7 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
             <div className="space-y-1">
               <div className="flex items-center gap-2">
                 <Clock className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm">
-                  {format(scheduledTime, 'HH:mm')}
-                </span>
+                <span className="text-sm">{format(scheduledTime, 'HH:mm')}</span>
                 <span className="text-sm text-muted-foreground">
                   ({appointment.actual_duration})
                 </span>
@@ -117,15 +133,17 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
                 <span className="text-sm">{appointment.client.phone}</span>
               </div>
             </div>
-            <div className={cn(
-              'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold',
-              {
-                'bg-yellow-100 text-yellow-800': appointment.status === 'scheduled',
-                'bg-green-100 text-green-800': appointment.status === 'completed',
-                'bg-red-100 text-red-800': appointment.status === 'canceled',
-                'bg-gray-100 text-gray-800': appointment.status === 'no_show'
-              }
-            )}>
+            <div
+              className={cn(
+                'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold',
+                {
+                  'bg-blue-100 text-blue-800': appointment.status === 'scheduled',
+                  'bg-green-100 text-green-800': appointment.status === 'completed',
+                  'bg-rose-100 text-rose-800': appointment.status === 'canceled',
+                  'bg-gray-100 text-gray-800': appointment.status === 'no_show',
+                }
+              )}
+            >
               {appointment.status === 'scheduled' && 'Agendado'}
               {appointment.status === 'completed' && 'Concluído'}
               {appointment.status === 'canceled' && 'Cancelado'}
@@ -153,9 +171,7 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => setIsEditDialogOpen(true)}>
-                Editar
-              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setIsEditDialogOpen(true)}>Editar</DropdownMenuItem>
               <DropdownMenuItem onClick={() => handleStatusChange('scheduled')}>
                 Marcar como Agendado
               </DropdownMenuItem>
@@ -186,4 +202,4 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
       </Dialog>
     </>
   )
-} 
+}

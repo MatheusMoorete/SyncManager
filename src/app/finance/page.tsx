@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -28,20 +28,57 @@ import {
   Calendar,
   Filter,
   Loader2,
+  PencilIcon,
+  TrashIcon,
 } from 'lucide-react'
 import { useFinanceStore } from '@/store/finance-store'
+import type { Transaction } from '@/store/finance-store'
 import { format } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { TransactionDialog } from '@/components/finance/dialogs/transaction-dialog'
 import { Overview } from '@/components/finance/overview'
+import { toast } from 'sonner'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 export default function FinancePage() {
   const { transactions, stats, isLoading, error, actions } = useFinanceStore()
+  const [transactionToEdit, setTransactionToEdit] = useState<Transaction | null>(null)
+  const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null)
 
   useEffect(() => {
     actions.fetchTransactions()
     actions.fetchExpenses()
   }, [actions])
+
+  const handleEditTransaction = (transaction: Transaction) => {
+    setTransactionToEdit(transaction)
+  }
+
+  const handleDeleteTransaction = (transaction: Transaction) => {
+    setTransactionToDelete(transaction)
+  }
+
+  const confirmDelete = async () => {
+    if (!transactionToDelete) return
+
+    try {
+      await actions.deleteTransaction(transactionToDelete.id)
+      toast.success('Transação excluída com sucesso')
+    } catch (error) {
+      toast.error('Erro ao excluir transação')
+    } finally {
+      setTransactionToDelete(null)
+    }
+  }
 
   if (isLoading) {
     return (
@@ -170,6 +207,7 @@ export default function FinancePage() {
                   <TableHead className="hidden sm:table-cell">Categoria</TableHead>
                   <TableHead className="hidden sm:table-cell">Método</TableHead>
                   <TableHead className="text-right">Valor</TableHead>
+                  <TableHead className="w-[100px]">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -177,16 +215,11 @@ export default function FinancePage() {
                   <TableRow key={transaction.id} className="hover:bg-neutral-cream/10">
                     <TableCell className="font-medium whitespace-nowrap">
                       {(() => {
-                        console.log('Data original da transação:', transaction.transaction_date)
                         const datePart = transaction.transaction_date.split('T')[0]
-                        console.log('Parte da data:', datePart)
                         const [year, month, day] = datePart.split('-').map(Number)
                         const date = new Date(year, month - 1, day)
-                        date.setHours(12, 0, 0, 0) // Set to noon to avoid timezone issues
-                        console.log('Objeto Date criado:', date)
-                        const formattedDate = format(date, 'dd/MM/yyyy', { locale: ptBR })
-                        console.log('Data formatada:', formattedDate)
-                        return formattedDate
+                        date.setHours(12, 0, 0, 0)
+                        return format(date, 'dd/MM/yyyy', { locale: ptBR })
                       })()}
                     </TableCell>
                     <TableCell>
@@ -220,6 +253,28 @@ export default function FinancePage() {
                       {transaction.type === 'income' ? '+' : '-'} R${' '}
                       {Math.abs(transaction.amount).toFixed(2)}
                     </TableCell>
+                    <TableCell>
+                      <div className="flex items-center justify-end gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                          onClick={() => handleEditTransaction(transaction)}
+                        >
+                          <PencilIcon className="h-4 w-4" />
+                          <span className="sr-only">Editar</span>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                          onClick={() => handleDeleteTransaction(transaction)}
+                        >
+                          <TrashIcon className="h-4 w-4" />
+                          <span className="sr-only">Excluir</span>
+                        </Button>
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -227,6 +282,36 @@ export default function FinancePage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!transactionToDelete} onOpenChange={() => setTransactionToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Transação</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir esta transação? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Edit Transaction Dialog */}
+      {transactionToEdit && (
+        <TransactionDialog
+          transaction={transactionToEdit}
+          open={!!transactionToEdit}
+          onOpenChange={() => setTransactionToEdit(null)}
+        />
+      )}
     </div>
   )
 }

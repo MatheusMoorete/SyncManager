@@ -32,6 +32,7 @@ import {
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { useFinanceStore } from '@/store/finance-store'
+import type { Transaction } from '@/store/finance-store'
 import { format } from 'date-fns'
 
 const transactionSchema = z.object({
@@ -49,67 +50,101 @@ const transactionSchema = z.object({
 type TransactionFormValues = z.infer<typeof transactionSchema>
 
 interface TransactionDialogProps {
-  trigger: React.ReactNode
+  trigger?: React.ReactNode
+  transaction?: Transaction
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
-export function TransactionDialog({ trigger }: TransactionDialogProps) {
+export function TransactionDialog({
+  trigger,
+  transaction,
+  open: controlledOpen,
+  onOpenChange,
+}: TransactionDialogProps) {
   const [open, setOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const { actions } = useFinanceStore()
 
+  const isControlled = controlledOpen !== undefined && onOpenChange !== undefined
+  const isOpen = isControlled ? controlledOpen : open
+  const setIsOpen = isControlled ? onOpenChange : setOpen
+
   const form = useForm<TransactionFormValues>({
     resolver: zodResolver(transactionSchema),
     defaultValues: {
-      type: 'income',
-      transaction_date: format(new Date(), 'yyyy-MM-dd'),
+      type: transaction?.type || 'income',
+      category: transaction?.category || '',
+      amount: transaction?.amount ? String(transaction.amount) : '',
+      payment_method: transaction?.payment_method || undefined,
+      notes: transaction?.notes || '',
+      transaction_date: transaction?.transaction_date
+        ? format(new Date(transaction.transaction_date), 'yyyy-MM-dd')
+        : format(new Date(), 'yyyy-MM-dd'),
     },
   })
 
   const onSubmit = async (data: TransactionFormValues) => {
     try {
       setIsSubmitting(true)
-      console.log('Data selecionada no form:', data.transaction_date)
-
       const [year, month, day] = data.transaction_date.split('-').map(Number)
-      console.log('Valores extraídos:', { year, month, day })
-
       const adjustedDate = new Date(year, month - 1, day, 12, 0, 0)
-      console.log('Data ajustada:', adjustedDate)
-      console.log('Data ajustada ISO:', adjustedDate.toISOString())
 
-      await actions.addTransaction({
-        ...data,
-        transaction_date: adjustedDate.toISOString(),
-        client_id: null,
-        receipt_url: null,
-        notes: data.notes || null,
-      })
-
-      toast.success(`${data.type === 'income' ? 'Receita' : 'Despesa'} adicionada com sucesso.`, {
-        style: {
-          background: data.type === 'income' ? 'rgb(var(--soft-sage))' : 'rgb(var(--terracotta))',
-          color: 'white',
-        },
-      })
+      if (transaction) {
+        // Editing existing transaction
+        await actions.updateTransaction(transaction.id, {
+          ...data,
+          transaction_date: adjustedDate.toISOString(),
+          client_id: transaction.client_id,
+          receipt_url: transaction.receipt_url,
+          notes: data.notes || null,
+        })
+        toast.success(`${data.type === 'income' ? 'Receita' : 'Despesa'} atualizada com sucesso.`, {
+          style: {
+            background: data.type === 'income' ? 'rgb(var(--soft-sage))' : 'rgb(var(--terracotta))',
+            color: 'white',
+          },
+        })
+      } else {
+        // Creating new transaction
+        await actions.addTransaction({
+          ...data,
+          transaction_date: adjustedDate.toISOString(),
+          client_id: null,
+          receipt_url: null,
+          notes: data.notes || null,
+        })
+        toast.success(`${data.type === 'income' ? 'Receita' : 'Despesa'} adicionada com sucesso.`, {
+          style: {
+            background: data.type === 'income' ? 'rgb(var(--soft-sage))' : 'rgb(var(--terracotta))',
+            color: 'white',
+          },
+        })
+      }
 
       form.reset()
-      setOpen(false)
+      setIsOpen(false)
     } catch (error) {
-      toast.error('Não foi possível adicionar a transação. Tente novamente.')
-      console.error('Erro ao adicionar transação:', error)
+      toast.error(
+        `Não foi possível ${transaction ? 'atualizar' : 'adicionar'} a transação. Tente novamente.`
+      )
+      console.error('Erro ao processar transação:', error)
     } finally {
       setIsSubmitting(false)
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       <DialogContent className="w-[min(calc(100%-2rem),400px)] p-4 gap-4">
         <DialogHeader className="space-y-2 text-left">
-          <DialogTitle className="text-lg font-semibold">Nova Transação</DialogTitle>
+          <DialogTitle className="text-lg font-semibold">
+            {transaction ? 'Editar' : 'Nova'} Transação
+          </DialogTitle>
           <DialogDescription className="text-sm text-muted-foreground">
-            Adicione uma nova transação ao seu fluxo financeiro.
+            {transaction ? 'Edite os dados da' : 'Adicione uma nova'} transação ao seu fluxo
+            financeiro.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
@@ -257,7 +292,7 @@ export function TransactionDialog({ trigger }: TransactionDialogProps) {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setOpen(false)}
+                onClick={() => setIsOpen(false)}
                 disabled={isSubmitting}
                 className="h-9"
               >

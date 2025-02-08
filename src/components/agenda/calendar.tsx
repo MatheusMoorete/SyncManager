@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { ChevronLeft, ChevronRight, Clock } from 'lucide-react'
-import { 
-  format, 
+import {
+  format,
   addMonths,
   subMonths,
   startOfMonth,
@@ -20,7 +20,7 @@ import {
   endOfDay,
   addDays,
   subDays,
-  isSameDay
+  isSameDay,
 } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { cn } from '@/lib/utils'
@@ -47,8 +47,8 @@ export function Calendar({ className }: CalendarProps) {
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null)
   const [isDetailsOpen, setIsDetailsOpen] = useState(false)
   const [selectedDayEvents, setSelectedDayEvents] = useState<{
-    date: Date;
-    appointments: Appointment[];
+    date: Date
+    appointments: Appointment[]
   } | null>(null)
   const [isDayEventsOpen, setIsDayEventsOpen] = useState(false)
   const { appointments, actions } = useScheduleStore()
@@ -137,10 +137,10 @@ export function Calendar({ className }: CalendarProps) {
 
     const [startHour] = businessHours.starttime.split(':').map(Number)
     const [endHour] = businessHours.endtime.split(':').map(Number)
-    
+
     const start = new Date().setHours(startHour, 0, 0, 0)
     const end = new Date().setHours(endHour, 0, 0, 0)
-    
+
     return eachHourOfInterval({ start: new Date(start), end: new Date(end) })
   }
 
@@ -164,10 +164,7 @@ export function Calendar({ className }: CalendarProps) {
   const getAppointmentsForDayAndHour = (date: Date, hour: number): Appointment[] => {
     return appointments.filter(appointment => {
       const appointmentDate = new Date(appointment.scheduled_time)
-      return (
-        isSameDay(appointmentDate, date) &&
-        appointmentDate.getHours() === hour
-      )
+      return isSameDay(appointmentDate, date) && appointmentDate.getHours() === hour
     })
   }
 
@@ -178,7 +175,7 @@ export function Calendar({ className }: CalendarProps) {
     } else if (view === 'week') {
       const start = startOfWeek(currentDate, { locale: ptBR })
       const end = endOfWeek(currentDate, { locale: ptBR })
-      return `${format(start, "d")} - ${format(end, "d 'de' MMMM yyyy", { locale: ptBR })}`
+      return `${format(start, 'd')} - ${format(end, "d 'de' MMMM yyyy", { locale: ptBR })}`
     }
     return format(currentDate, "d 'de' MMMM yyyy", { locale: ptBR })
   }
@@ -194,87 +191,62 @@ export function Calendar({ className }: CalendarProps) {
   }
 
   return (
-    <Card className={cn("p-2 md:p-4", className)}>
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-          <div className="flex items-center gap-2">
+    <Card className={cn('p-2 md:p-4', className)}>
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={handleToday}>
+            Hoje
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => setIsBusinessHoursOpen(true)}>
+            <Clock className="h-4 w-4 mr-2" />
+            Horário de Expediente
+          </Button>
+        </div>
+
+        <h2 className="text-lg font-semibold capitalize order-first md:order-none">
+          {formatPeriodTitle()}
+        </h2>
+
+        <div className="flex items-center gap-2">
+          {/* Esconder os botões de visualização em mobile */}
+          <div className="hidden md:flex items-center rounded-md border">
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
-              onClick={handleToday}
+              className={cn('rounded-none border-r px-2 md:px-3', view === 'month' && 'bg-accent')}
+              onClick={() => setView('month')}
             >
-              Hoje
+              Mês
             </Button>
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
-              onClick={() => setIsBusinessHoursOpen(true)}
+              className={cn('rounded-none border-r px-2 md:px-3', view === 'week' && 'bg-accent')}
+              onClick={() => setView('week')}
             >
-              <Clock className="h-4 w-4 mr-2" />
-              Horário de Expediente
+              Semana
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn('rounded-none px-2 md:px-3', view === 'day' && 'bg-accent')}
+              onClick={() => setView('day')}
+            >
+              Dia
             </Button>
           </div>
 
-          <h2 className="text-lg font-semibold capitalize order-first md:order-none">
-            {formatPeriodTitle()}
-          </h2>
-
-          <div className="flex items-center gap-2">
-            {/* Esconder os botões de visualização em mobile */}
-            <div className="hidden md:flex items-center rounded-md border">
-              <Button
-                variant="ghost"
-                size="sm"
-                className={cn(
-                  "rounded-none border-r px-2 md:px-3",
-                  view === 'month' && "bg-accent"
-                )}
-                onClick={() => setView('month')}
-              >
-                Mês
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className={cn(
-                  "rounded-none border-r px-2 md:px-3",
-                  view === 'week' && "bg-accent"
-                )}
-                onClick={() => setView('week')}
-              >
-                Semana
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className={cn(
-                  "rounded-none px-2 md:px-3",
-                  view === 'day' && "bg-accent"
-                )}
-                onClick={() => setView('day')}
-              >
-                Dia
-              </Button>
-            </div>
-
-            <div className="flex items-center space-x-1">
-            <Button 
-              variant="outline" 
-              size="icon" 
-                onClick={handlePrevious}
-            >
+          <div className="flex items-center space-x-1">
+            <Button variant="outline" size="icon" onClick={handlePrevious}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <Button 
-              variant="outline" 
-              size="icon" 
-                onClick={handleNext}
-            >
+            <Button variant="outline" size="icon" onClick={handleNext}>
               <ChevronRight className="h-4 w-4" />
             </Button>
-            </div>
           </div>
         </div>
+      </div>
 
       {/* Em mobile, sempre mostrar a visão diária */}
       {isMobile ? (
@@ -283,13 +255,13 @@ export function Calendar({ className }: CalendarProps) {
           {/* Cabeçalho do dia */}
           <div className="grid grid-cols-[80px_1fr] border-b">
             <div className="p-2 border-r bg-background" />
-            <div className={cn(
-              "p-2 text-center bg-background",
-              isToday(currentDate) && "bg-accent/10"
-            )}>
-              <div className="font-medium text-base">
-                {WEEKDAYS_LONG[currentDate.getDay()]}
-              </div>
+            <div
+              className={cn(
+                'p-2 text-center bg-background',
+                isToday(currentDate) && 'bg-accent/10'
+              )}
+            >
+              <div className="font-medium text-base">{WEEKDAYS_LONG[currentDate.getDay()]}</div>
               <div className="text-sm text-muted-foreground">
                 {format(currentDate, "d 'de' MMMM", { locale: ptBR })}
               </div>
@@ -300,25 +272,21 @@ export function Calendar({ className }: CalendarProps) {
           <div className="grid grid-cols-[80px_1fr]">
             {/* Coluna de horários */}
             <div className="border-r">
-              {getHours().map((hour) => {
+              {getHours().map(hour => {
                 const hourNumber = hour.getHours()
                 const isBreak = isLunchBreak(hourNumber)
-                
+
                 return (
                   <div
                     key={hour.toString()}
                     className={cn(
-                      "h-16 border-b p-2 text-xs text-muted-foreground",
-                      isBreak && "bg-gray-50"
+                      'h-16 border-b p-2 text-xs text-muted-foreground',
+                      isBreak && 'bg-gray-50'
                     )}
                   >
                     <div className="flex items-center justify-between">
                       <span>{format(hour, 'HH:mm')}</span>
-                      {isBreak && (
-                        <span className="text-[10px] text-muted-foreground">
-                          Almoço
-                        </span>
-                      )}
+                      {isBreak && <span className="text-[10px] text-muted-foreground">Almoço</span>}
                     </div>
                   </div>
                 )
@@ -327,30 +295,29 @@ export function Calendar({ className }: CalendarProps) {
 
             {/* Coluna de eventos */}
             <div className="relative">
-              {getHours().map((hour) => {
+              {getHours().map(hour => {
                 const appointments = getAppointmentsForDayAndHour(currentDate, hour.getHours())
                 return (
                   <div key={hour.toString()} className="h-16 border-b p-1">
-                    {appointments.map((appointment) => (
+                    {appointments.map(appointment => (
                       <div
                         key={appointment.id}
                         onClick={() => handleAppointmentClick(appointment)}
                         className={cn(
-                          "text-xs p-1.5 mb-1 rounded-sm cursor-pointer hover:opacity-80",
+                          'text-xs p-1.5 mb-1 rounded-sm cursor-pointer hover:opacity-80',
                           {
-                            'bg-emerald-100 text-emerald-800': appointment.status === 'scheduled',
+                            'bg-blue-100 text-blue-800': appointment.status === 'scheduled',
                             'bg-green-100 text-green-800': appointment.status === 'completed',
                             'bg-rose-100 text-rose-800': appointment.status === 'canceled',
-                            'bg-slate-100 text-slate-800': appointment.status === 'no_show'
+                            'bg-gray-100 text-gray-800': appointment.status === 'no_show',
                           }
                         )}
                       >
                         <div className="font-medium truncate">
-                          {format(new Date(appointment.scheduled_time), 'HH:mm')} - {appointment.client.full_name}
+                          {format(new Date(appointment.scheduled_time), 'HH:mm')} -{' '}
+                          {appointment.client.full_name}
                         </div>
-                        <div className="text-[10px] truncate">
-                          {appointment.service.name}
-                        </div>
+                        <div className="text-[10px] truncate">{appointment.service.name}</div>
                       </div>
                     ))}
                   </div>
@@ -359,260 +326,234 @@ export function Calendar({ className }: CalendarProps) {
             </div>
           </div>
         </div>
-      ) : (
-        // Visualizações normais para desktop
-        view === 'month' ? (
-          // Visualização mensal
-          <div className="grid grid-cols-7 gap-[1px] bg-muted rounded-lg overflow-hidden">
-            {/* Weekday headers */}
-            {WEEKDAYS.map((day) => (
+      ) : // Visualizações normais para desktop
+      view === 'month' ? (
+        // Visualização mensal
+        <div className="grid grid-cols-7 gap-[1px] bg-muted rounded-lg overflow-hidden">
+          {/* Weekday headers */}
+          {WEEKDAYS.map(day => (
+            <div
+              key={day}
+              className="bg-background p-1.5 md:p-2 text-center text-[11px] md:text-sm font-medium"
+            >
+              {day}
+            </div>
+          ))}
+
+          {/* Calendar days */}
+          {days.map(date => {
+            const dayAppointments = appointments.filter(appointment =>
+              isSameDay(new Date(appointment.scheduled_time), date)
+            )
+            const isCurrentMonth = isSameMonth(date, currentDate)
+            const isCurrentDay = isToday(date)
+
+            return (
               <div
-                key={day}
-                className="bg-background p-1.5 md:p-2 text-center text-[11px] md:text-sm font-medium"
+                key={date.toISOString()}
+                className={cn(
+                  'min-h-[90px] md:min-h-[120px] p-1 md:p-2 bg-background transition-colors',
+                  !isCurrentMonth && 'text-muted-foreground/40',
+                  isCurrentDay && 'bg-accent/10'
+                )}
               >
-                {day}
+                <div className="flex items-center justify-between mb-1">
+                  <span className={cn('text-xs md:text-sm', isCurrentDay && 'font-bold')}>
+                    {format(date, 'd')}
+                  </span>
+                  {dayAppointments.length > 0 && (
+                    <span className="text-[9px] md:text-xs text-muted-foreground">
+                      {dayAppointments.length} eventos
+                    </span>
+                  )}
+                </div>
+
+                <div className="space-y-[2px]">
+                  {dayAppointments.slice(0, 2).map(appointment => (
+                    <div
+                      key={appointment.id}
+                      onClick={() => handleAppointmentClick(appointment)}
+                      className={cn(
+                        'text-[9px] md:text-xs py-0.5 px-1 rounded-sm truncate cursor-pointer hover:opacity-80',
+                        {
+                          'bg-blue-100 text-blue-800': appointment.status === 'scheduled',
+                          'bg-green-100 text-green-800': appointment.status === 'completed',
+                          'bg-rose-100 text-rose-800': appointment.status === 'canceled',
+                          'bg-gray-100 text-gray-800': appointment.status === 'no_show',
+                        }
+                      )}
+                    >
+                      <div className="flex items-center gap-0.5">
+                        <span className="font-medium whitespace-nowrap">
+                          {format(new Date(appointment.scheduled_time), 'HH:mm')}
+                        </span>
+                        <span className="truncate">- {appointment.client.full_name}</span>
+                      </div>
+                    </div>
+                  ))}
+                  {dayAppointments.length > 2 && (
+                    <div
+                      className="text-[9px] md:text-xs text-blue-500 cursor-pointer hover:text-blue-600 pl-1"
+                      onClick={() => handleDayEventsClick(date, dayAppointments)}
+                    >
+                      +{dayAppointments.length - 2} mais
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      ) : view === 'week' ? (
+        // Visualização semanal
+        <div className="rounded-lg border overflow-hidden">
+          {/* Cabeçalho dos dias da semana */}
+          <div className="grid grid-cols-8 border-b">
+            <div className="p-2 border-r bg-background" />
+            {days.map(date => (
+              <div
+                key={date.toISOString()}
+                className={cn('p-2 text-center bg-background', isToday(date) && 'bg-accent/10')}
+              >
+                <div className="font-medium text-sm">{WEEKDAYS_LONG[date.getDay()]}</div>
+                <div className={cn('text-sm', isToday(date) && 'font-bold text-primary')}>
+                  {format(date, 'd')}
+                </div>
               </div>
             ))}
-
-            {/* Calendar days */}
-            {days.map((date) => {
-              const dayAppointments = appointments.filter(appointment => 
-                isSameDay(new Date(appointment.scheduled_time), date)
-              )
-              const isCurrentMonth = isSameMonth(date, currentDate)
-              const isCurrentDay = isToday(date)
-
-              return (
-                <div
-                  key={date.toISOString()}
-                  className={cn(
-                    "min-h-[90px] md:min-h-[120px] p-1 md:p-2 bg-background transition-colors",
-                    !isCurrentMonth && "text-muted-foreground/40",
-                    isCurrentDay && "bg-accent/10"
-                  )}
-                >
-                  <div className="flex items-center justify-between mb-1">
-                    <span className={cn(
-                      "text-xs md:text-sm",
-                      isCurrentDay && "font-bold"
-                    )}>
-                      {format(date, 'd')}
-                    </span>
-                    {dayAppointments.length > 0 && (
-                      <span className="text-[9px] md:text-xs text-muted-foreground">
-                        {dayAppointments.length} eventos
-                      </span>
-                    )}
-                  </div>
-
-                  <div className="space-y-[2px]">
-                    {dayAppointments.slice(0, 2).map((appointment) => (
-                      <div
-                        key={appointment.id}
-                        onClick={() => handleAppointmentClick(appointment)}
-                        className={cn(
-                          "text-[9px] md:text-xs py-0.5 px-1 rounded-sm truncate cursor-pointer hover:opacity-80",
-                          {
-                            'bg-emerald-100 text-emerald-800': appointment.status === 'scheduled',
-                            'bg-green-100 text-green-800': appointment.status === 'completed',
-                            'bg-rose-100 text-rose-800': appointment.status === 'canceled',
-                            'bg-slate-100 text-slate-800': appointment.status === 'no_show'
-                          }
-                        )}
-                      >
-                        <div className="flex items-center gap-0.5">
-                          <span className="font-medium whitespace-nowrap">
-                            {format(new Date(appointment.scheduled_time), 'HH:mm')}
-                          </span>
-                          <span className="truncate">
-                            - {appointment.client.full_name}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                    {dayAppointments.length > 2 && (
-                      <div 
-                        className="text-[9px] md:text-xs text-blue-500 cursor-pointer hover:text-blue-600 pl-1"
-                        onClick={() => handleDayEventsClick(date, dayAppointments)}
-                      >
-                        +{dayAppointments.length - 2} mais
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
           </div>
-        ) : view === 'week' ? (
-          // Visualização semanal
-          <div className="rounded-lg border overflow-hidden">
-            {/* Cabeçalho dos dias da semana */}
-            <div className="grid grid-cols-8 border-b">
-              <div className="p-2 border-r bg-background" />
-              {days.map((date) => (
-                <div
-                  key={date.toISOString()}
-                  className={cn(
-                    "p-2 text-center bg-background",
-                    isToday(date) && "bg-accent/10"
-                  )}
-                >
-                  <div className="font-medium text-sm">
-                    {WEEKDAYS_LONG[date.getDay()]}
-                  </div>
-                  <div className={cn(
-                    "text-sm",
-                    isToday(date) && "font-bold text-primary"
-                  )}>
-                    {format(date, 'd')}
-                  </div>
-                </div>
-              ))}
-            </div>
 
-            {/* Grid de horários */}
-            <div className="grid grid-cols-8">
-              {/* Coluna de horários */}
-              <div className="border-r">
-                {getHours().map((hour) => {
-                  const hourNumber = hour.getHours()
-                  const isBreak = isLunchBreak(hourNumber)
-                  
-                  return (
-                    <div
-                      key={hour.toString()}
-                      className={cn(
-                        "h-20 border-b p-2 text-sm text-muted-foreground",
-                        isBreak && "bg-gray-50"
-                      )}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span>{format(hour, 'HH:mm')}</span>
-                        {isBreak && (
-                          <span className="text-[10px] text-muted-foreground">
-                            Almoço
-                          </span>
-                        )}
-                      </div>
+          {/* Grid de horários */}
+          <div className="grid grid-cols-8">
+            {/* Coluna de horários */}
+            <div className="border-r">
+              {getHours().map(hour => {
+                const hourNumber = hour.getHours()
+                const isBreak = isLunchBreak(hourNumber)
+
+                return (
+                  <div
+                    key={hour.toString()}
+                    className={cn(
+                      'h-20 border-b p-2 text-sm text-muted-foreground',
+                      isBreak && 'bg-gray-50'
+                    )}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span>{format(hour, 'HH:mm')}</span>
+                      {isBreak && <span className="text-[10px] text-muted-foreground">Almoço</span>}
                     </div>
-                  )
-                })}
-              </div>
-
-              {/* Colunas dos dias */}
-              {days.map((date) => (
-                <div key={date.toISOString()} className="relative">
-                  {getHours().map((hour) => {
-                    const appointments = getAppointmentsForDayAndHour(date, hour.getHours())
-                    return (
-                      <div key={hour.toString()} className="h-20 border-b border-r p-1">
-          {appointments.map((appointment) => (
-            <div
-              key={appointment.id}
-                            onClick={() => handleAppointmentClick(appointment)}
-                            className={cn(
-                              "text-xs p-1 mb-1 rounded truncate cursor-pointer hover:opacity-80",
-                              {
-                                'bg-emerald-100 text-emerald-800': appointment.status === 'scheduled',
-                                'bg-green-100 text-green-800': appointment.status === 'completed',
-                                'bg-rose-100 text-rose-800': appointment.status === 'canceled',
-                                'bg-slate-100 text-slate-800': appointment.status === 'no_show'
-                              }
-                            )}
-                          >
-                            {format(new Date(appointment.scheduled_time), 'HH:mm')} - {appointment.client.full_name}
-                          </div>
-                        ))}
-                      </div>
-                    )
-                  })}
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : (
-          // Visualização diária
-          <div className="rounded-lg border overflow-hidden">
-            {/* Cabeçalho do dia */}
-            <div className="grid grid-cols-[100px_1fr] border-b">
-              <div className="p-2 border-r bg-background" />
-              <div className={cn(
-                "p-2 text-center bg-background",
-                isToday(currentDate) && "bg-accent/10"
-              )}>
-                <div className="font-medium text-lg">
-                  {WEEKDAYS_LONG[currentDate.getDay()]}
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  {format(currentDate, "d 'de' MMMM", { locale: ptBR })}
-                </div>
-              </div>
+                  </div>
+                )
+              })}
             </div>
 
-            {/* Grid de horários */}
-            <div className="grid grid-cols-[100px_1fr]">
-              {/* Coluna de horários */}
-              <div className="border-r">
-                {getHours().map((hour) => {
-                  const hourNumber = hour.getHours()
-                  const isBreak = isLunchBreak(hourNumber)
-                  
+            {/* Colunas dos dias */}
+            {days.map(date => (
+              <div key={date.toISOString()} className="relative">
+                {getHours().map(hour => {
+                  const appointments = getAppointmentsForDayAndHour(date, hour.getHours())
                   return (
-                    <div
-                      key={hour.toString()}
-                      className={cn(
-                        "h-20 border-b p-2 text-sm text-muted-foreground",
-                        isBreak && "bg-gray-50"
-                      )}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span>{format(hour, 'HH:mm')}</span>
-                        {isBreak && (
-                          <span className="text-[10px] text-muted-foreground">
-                            Almoço
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-
-              {/* Coluna de eventos */}
-              <div className="relative">
-                {getHours().map((hour) => {
-                  const appointments = getAppointmentsForDayAndHour(currentDate, hour.getHours())
-                  return (
-                    <div key={hour.toString()} className="h-20 border-b p-1">
-                      {appointments.map((appointment) => (
+                    <div key={hour.toString()} className="h-20 border-b border-r p-1">
+                      {appointments.map(appointment => (
                         <div
                           key={appointment.id}
                           onClick={() => handleAppointmentClick(appointment)}
                           className={cn(
-                            "text-sm p-2 mb-1 rounded cursor-pointer hover:opacity-80",
+                            'text-xs p-1.5 mb-1 rounded-sm cursor-pointer hover:opacity-80',
                             {
-                              'bg-emerald-100 text-emerald-800': appointment.status === 'scheduled',
+                              'bg-blue-100 text-blue-800': appointment.status === 'scheduled',
                               'bg-green-100 text-green-800': appointment.status === 'completed',
                               'bg-rose-100 text-rose-800': appointment.status === 'canceled',
-                              'bg-slate-100 text-slate-800': appointment.status === 'no_show'
+                              'bg-gray-100 text-gray-800': appointment.status === 'no_show',
                             }
                           )}
                         >
-                          <div className="font-medium">
-                            {format(new Date(appointment.scheduled_time), 'HH:mm')} - {appointment.client.full_name}
-                          </div>
-                          <div className="text-xs mt-1">
-                            {appointment.service.name}
-                          </div>
+                          {format(new Date(appointment.scheduled_time), 'HH:mm')} -{' '}
+                          {appointment.client.full_name}
                         </div>
                       ))}
                     </div>
                   )
                 })}
               </div>
-            </div>
+            ))}
+          </div>
         </div>
-        )
+      ) : (
+        // Visualização diária
+        <div className="rounded-lg border overflow-hidden">
+          {/* Cabeçalho do dia */}
+          <div className="grid grid-cols-[100px_1fr] border-b">
+            <div className="p-2 border-r bg-background" />
+            <div
+              className={cn(
+                'p-2 text-center bg-background',
+                isToday(currentDate) && 'bg-accent/10'
+              )}
+            >
+              <div className="font-medium text-lg">{WEEKDAYS_LONG[currentDate.getDay()]}</div>
+              <div className="text-sm text-muted-foreground">
+                {format(currentDate, "d 'de' MMMM", { locale: ptBR })}
+              </div>
+            </div>
+          </div>
+
+          {/* Grid de horários */}
+          <div className="grid grid-cols-[100px_1fr]">
+            {/* Coluna de horários */}
+            <div className="border-r">
+              {getHours().map(hour => {
+                const hourNumber = hour.getHours()
+                const isBreak = isLunchBreak(hourNumber)
+
+                return (
+                  <div
+                    key={hour.toString()}
+                    className={cn(
+                      'h-20 border-b p-2 text-sm text-muted-foreground',
+                      isBreak && 'bg-gray-50'
+                    )}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span>{format(hour, 'HH:mm')}</span>
+                      {isBreak && <span className="text-[10px] text-muted-foreground">Almoço</span>}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Coluna de eventos */}
+            <div className="relative">
+              {getHours().map(hour => {
+                const appointments = getAppointmentsForDayAndHour(currentDate, hour.getHours())
+                return (
+                  <div key={hour.toString()} className="h-20 border-b p-1">
+                    {appointments.map(appointment => (
+                      <div
+                        key={appointment.id}
+                        onClick={() => handleAppointmentClick(appointment)}
+                        className={cn('text-sm p-2 mb-1 rounded cursor-pointer hover:opacity-80', {
+                          'bg-blue-100 text-blue-800': appointment.status === 'scheduled',
+                          'bg-green-100 text-green-800': appointment.status === 'completed',
+                          'bg-rose-100 text-rose-800': appointment.status === 'canceled',
+                          'bg-gray-100 text-gray-800': appointment.status === 'no_show',
+                        })}
+                      >
+                        <div className="font-medium">
+                          {format(new Date(appointment.scheduled_time), 'HH:mm')} -{' '}
+                          {appointment.client.full_name}
+                        </div>
+                        <div className="text-xs mt-1">{appointment.service.name}</div>
+                      </div>
+                    ))}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        </div>
       )}
 
       <AppointmentDetailsDialog
@@ -627,7 +568,7 @@ export function Calendar({ className }: CalendarProps) {
           appointments={selectedDayEvents.appointments}
           open={isDayEventsOpen}
           onOpenChange={setIsDayEventsOpen}
-          onAppointmentClick={(appointment) => {
+          onAppointmentClick={appointment => {
             setSelectedAppointment(appointment)
             setIsDetailsOpen(true)
             setIsDayEventsOpen(false)
@@ -635,10 +576,7 @@ export function Calendar({ className }: CalendarProps) {
         />
       )}
 
-      <BusinessHoursDialog
-        open={isBusinessHoursOpen}
-        onOpenChange={setIsBusinessHoursOpen}
-      />
+      <BusinessHoursDialog open={isBusinessHoursOpen} onOpenChange={setIsBusinessHoursOpen} />
     </Card>
   )
-} 
+}

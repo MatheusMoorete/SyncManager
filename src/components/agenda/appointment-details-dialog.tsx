@@ -3,12 +3,7 @@ import { format, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Loader2, Trash2 } from 'lucide-react'
 import { toast } from 'sonner'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -18,7 +13,7 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -64,10 +59,10 @@ export function AppointmentDetailsDialog({
   if (!appointment) return null
 
   const statusMap = {
-    scheduled: { label: 'Agendado', class: 'bg-emerald-100 text-emerald-800' },
+    scheduled: { label: 'Agendado', class: 'bg-blue-100 text-blue-800' },
     completed: { label: 'Concluído', class: 'bg-green-100 text-green-800' },
     canceled: { label: 'Cancelado', class: 'bg-rose-100 text-rose-800' },
-    no_show: { label: 'Não Compareceu', class: 'bg-slate-100 text-slate-800' },
+    no_show: { label: 'Não Compareceu', class: 'bg-gray-100 text-gray-800' },
   }
 
   const handleEdit = () => {
@@ -132,8 +127,27 @@ export function AppointmentDetailsDialog({
         final_price: selectedService.base_price, // Usa o preço do novo serviço
         status: editedData.status as 'scheduled' | 'completed' | 'canceled' | 'no_show',
         notes: editedData.notes || undefined,
-        actual_duration: selectedService.duration // Usa a duração do novo serviço
+        actual_duration: selectedService.duration, // Usa a duração do novo serviço
       })
+
+      // Se o status for 'completed', criar uma transação financeira
+      if (editedData.status === 'completed') {
+        const { useFinanceStore } = await import('@/store/finance-store')
+        const financeStore = useFinanceStore.getState()
+
+        await financeStore.actions.addTransaction({
+          type: 'income',
+          category: 'Serviços',
+          amount: selectedService.base_price,
+          payment_method: 'pix', // Método padrão, pode ser ajustado conforme necessário
+          transaction_date: new Date().toISOString(),
+          notes: `Atendimento: ${selectedService.name} - Cliente: ${appointment.client.full_name}`,
+          client_id: appointment.client_id,
+          receipt_url: null,
+        })
+
+        toast.success('Atendimento concluído e receita registrada com sucesso!')
+      }
 
       setIsEditing(false)
       onOpenChange(false)
@@ -174,7 +188,7 @@ export function AppointmentDetailsDialog({
               {isEditing ? (
                 <Select
                   value={editedData.status}
-                  onValueChange={(value) => setEditedData(prev => ({ ...prev, status: value }))}
+                  onValueChange={value => setEditedData(prev => ({ ...prev, status: value }))}
                 >
                   <SelectTrigger className="mt-2">
                     <SelectValue placeholder="Selecione o status" />
@@ -188,10 +202,12 @@ export function AppointmentDetailsDialog({
                 </Select>
               ) : (
                 <div className="mt-1">
-                  <span className={cn(
-                    "px-3 py-1 rounded-full text-sm font-medium",
-                    statusMap[appointment.status].class
-                  )}>
+                  <span
+                    className={cn(
+                      'px-3 py-1 rounded-full text-sm font-medium',
+                      statusMap[appointment.status].class
+                    )}
+                  >
                     {statusMap[appointment.status].label}
                   </span>
                 </div>
@@ -213,14 +229,14 @@ export function AppointmentDetailsDialog({
               {isEditing ? (
                 <Select
                   value={editedData.service_id}
-                  onValueChange={(value) => setEditedData(prev => ({ ...prev, service_id: value }))}
+                  onValueChange={value => setEditedData(prev => ({ ...prev, service_id: value }))}
                 >
                   <SelectTrigger className="mt-2">
                     <SelectValue placeholder="Selecione o serviço" />
                   </SelectTrigger>
                   <SelectContent>
                     <ScrollArea className="max-h-[200px]">
-                      {services.map((service) => (
+                      {services.map(service => (
                         <SelectItem key={service.id} value={service.id!}>
                           {service.name}
                         </SelectItem>
@@ -248,12 +264,12 @@ export function AppointmentDetailsDialog({
                   <Input
                     type="date"
                     value={editedData.date}
-                    onChange={(e) => setEditedData(prev => ({ ...prev, date: e.target.value }))}
+                    onChange={e => setEditedData(prev => ({ ...prev, date: e.target.value }))}
                   />
                   <Input
                     type="time"
                     value={editedData.time}
-                    onChange={(e) => setEditedData(prev => ({ ...prev, time: e.target.value }))}
+                    onChange={e => setEditedData(prev => ({ ...prev, time: e.target.value }))}
                   />
                 </div>
               ) : (
@@ -270,14 +286,12 @@ export function AppointmentDetailsDialog({
                 {isEditing ? (
                   <Textarea
                     value={editedData.notes}
-                    onChange={(e) => setEditedData(prev => ({ ...prev, notes: e.target.value }))}
+                    onChange={e => setEditedData(prev => ({ ...prev, notes: e.target.value }))}
                     placeholder="Adicione observações..."
                     className="mt-2"
                   />
                 ) : (
-                  appointment.notes && (
-                    <p className="text-base mt-1">{appointment.notes}</p>
-                  )
+                  appointment.notes && <p className="text-base mt-1">{appointment.notes}</p>
                 )}
               </div>
             )}
@@ -286,17 +300,10 @@ export function AppointmentDetailsDialog({
             <div className="flex justify-end gap-2 pt-4 border-t">
               {isEditing ? (
                 <>
-                  <Button
-                    variant="outline"
-                    onClick={handleCancel}
-                    disabled={isLoading}
-                  >
+                  <Button variant="outline" onClick={handleCancel} disabled={isLoading}>
                     Cancelar
                   </Button>
-                  <Button
-                    onClick={handleSave}
-                    disabled={isLoading}
-                  >
+                  <Button onClick={handleSave} disabled={isLoading}>
                     {isLoading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -309,10 +316,7 @@ export function AppointmentDetailsDialog({
                 </>
               ) : (
                 <>
-                  <Button
-                    variant="outline"
-                    onClick={() => onOpenChange(false)}
-                  >
+                  <Button variant="outline" onClick={() => onOpenChange(false)}>
                     Fechar
                   </Button>
                   <Button
@@ -322,11 +326,7 @@ export function AppointmentDetailsDialog({
                   >
                     Excluir
                   </Button>
-                  <Button
-                    onClick={handleEdit}
-                  >
-                    Editar
-                  </Button>
+                  <Button onClick={handleEdit}>Editar</Button>
                 </>
               )}
             </div>
@@ -363,4 +363,4 @@ export function AppointmentDetailsDialog({
       </AlertDialog>
     </>
   )
-} 
+}
