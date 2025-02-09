@@ -11,7 +11,7 @@ create table public.points_history (
     points integer not null,
     type varchar(20) not null check (type in ('earned', 'spent', 'expired', 'adjusted')),
     description text,
-    created_at timestamp with time zone default timezone('utc'::text, now()) not null
+    createdAt timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
 -- Enable RLS on points_history

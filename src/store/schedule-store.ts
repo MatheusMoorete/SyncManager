@@ -105,7 +105,7 @@ interface AppointmentData {
   status: 'scheduled' | 'completed' | 'canceled' | 'no_show'
   notes: string | null
   discount: number | null
-  created_at: Timestamp
+  createdAt: Timestamp
   paymentMethod: 'cash' | 'credit_card' | 'debit_card' | 'pix' | null
 }
 
@@ -206,7 +206,7 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
               status: appointmentData.status,
               notes: appointmentData.notes || null,
               discount: appointmentData.discount || null,
-              created_at: appointmentData.created_at.toDate().toISOString(),
+              createdAt: appointmentData.createdAt.toDate().toISOString(),
               client: {
                 full_name: clientData.full_name,
                 phone: clientData.phone,
@@ -266,7 +266,7 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
         const appointmentData = {
           ...data,
           ownerId: user.uid,
-          created_at: Timestamp.now(),
+          createdAt: Timestamp.now(),
           scheduled_time: Timestamp.fromDate(new Date(data.scheduled_time)),
         }
 
@@ -292,7 +292,7 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
             status: data.status,
             notes: data.notes || null,
             discount: data.discount || null,
-            created_at: appointmentData.created_at.toDate().toISOString(),
+            createdAt: appointmentData.createdAt.toDate().toISOString(),
             client: {
               full_name: clientData.full_name,
               phone: clientData.phone,
@@ -381,7 +381,7 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
             status: data.status,
             notes: data.notes || null,
             discount: data.discount || null,
-            created_at: currentAppointment.created_at,
+            createdAt: currentAppointment.createdAt,
             client: {
               full_name: clientData.full_name,
               phone: clientData.phone,

@@ -15,7 +15,7 @@ create table clients (
     "sensitivity_level": 1
   }',
   notes text,
-  created_at timestamptz not null default now(),
+  createdAt timestamptz not null default now(),
   updated_at timestamptz,
   deleted_at timestamptz
 );
@@ -29,7 +29,7 @@ create table services (
   base_price numeric(10,2) not null,
   duration interval not null default '30 minutes',
   is_active boolean not null default true,
-  created_at timestamptz not null default now()
+  createdAt timestamptz not null default now()
 );
 
 -- Tabela de agendamentos
@@ -45,7 +45,7 @@ create table appointments (
     status in ('scheduled', 'completed', 'canceled', 'no_show')
   ),
   notes text,
-  created_at timestamptz not null default now()
+  createdAt timestamptz not null default now()
 );
 
 -- Tabela de transações financeiras
@@ -61,7 +61,7 @@ create table transactions (
   receipt_url text, -- Comprovante no Storage
   transaction_date timestamptz not null default now(),
   notes text,
-  created_at timestamptz not null default now()
+  createdAt timestamptz not null default now()
 );
 
 -- Tabela de programa de fidelidade
@@ -72,7 +72,7 @@ create table loyalty_points (
   points_redeemed integer not null default 0,
   expiration_date timestamptz,
   last_activity timestamptz not null default now(),
-  created_at timestamptz not null default now()
+  createdAt timestamptz not null default now()
 );
 
 -- Tabela de despesas recorrentes
@@ -86,7 +86,7 @@ create table expenses (
     frequency in ('daily', 'weekly', 'monthly', 'yearly', 'once')
   ),
   next_payment_date timestamptz,
-  created_at timestamptz not null default now()
+  createdAt timestamptz not null default now()
 );
 
 -- Tabela de perfis de usuário
@@ -95,7 +95,7 @@ create table profiles (
   name text not null,
   email text not null,
   avatar_url text,
-  created_at timestamptz not null default now(),
+  createdAt timestamptz not null default now(),
   updated_at timestamptz
 );
 

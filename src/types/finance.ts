@@ -7,7 +7,7 @@ export interface Transaction {
   type: TransactionType
   category: string
   date: string
-  created_at: string
+  createdAt: string
   updated_at: string
 }
 

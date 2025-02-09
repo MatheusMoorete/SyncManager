@@ -7,7 +7,7 @@ create table public.loyalty_config (
     minimum_for_points numeric(10,2) default 0.0,
     service_rules jsonb default '[]'::jsonb,
     levels jsonb default '[]'::jsonb,
-    created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+    createdAt timestamp with time zone default timezone('utc'::text, now()) not null,
     updated_at timestamp with time zone default timezone('utc'::text, now()) not null,
     constraint single_config_per_owner unique (owner_id),
     constraint check_id check (id = 1)

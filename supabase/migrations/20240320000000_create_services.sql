@@ -1,6 +1,6 @@
 create table "public"."services" (
   id uuid not null default gen_random_uuid(),
-  created_at timestamp with time zone not null default timezone('utc'::text, now()),
+  createdAt timestamp with time zone not null default timezone('utc'::text, now()),
   updated_at timestamp with time zone not null default timezone('utc'::text, now()),
   name text not null,
   description text,

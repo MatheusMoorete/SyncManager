@@ -21,7 +21,7 @@ interface PointsHistoryEntry {
   points: number
   type: 'earned' | 'spent' | 'expired' | 'adjusted'
   description: string
-  created_at: string
+  createdAt: string
 }
 
 interface PointsHistoryDialogProps {
@@ -42,7 +42,7 @@ export function PointsHistoryDialog({ clientId, clientName, trigger }: PointsHis
       const q = query(
         pointsHistoryRef,
         where('clientId', '==', clientId),
-        orderBy('created_at', 'desc')
+        orderBy('createdAt', 'desc')
       )
 
       const snapshot = await getDocs(q)
@@ -114,7 +114,7 @@ export function PointsHistoryDialog({ clientId, clientName, trigger }: PointsHis
                   <div className="space-y-1">
                     <p className="text-sm font-medium">{entry.description}</p>
                     <p className="text-xs text-muted-foreground">
-                      {format(new Date(entry.created_at), "PPP 'às' HH:mm", {
+                      {format(new Date(entry.createdAt), "PPP 'às' HH:mm", {
                         locale: ptBR,
                       })}
                     </p>

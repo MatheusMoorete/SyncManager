@@ -26,7 +26,7 @@ export type Appointment = {
   discount: number | null
   status: 'scheduled' | 'completed' | 'canceled' | 'no_show'
   notes: string | null
-  created_at: string
+  createdAt: string
   // Dados relacionados
   client: {
     full_name: string

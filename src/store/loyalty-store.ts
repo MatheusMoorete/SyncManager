@@ -250,7 +250,7 @@ export const useLoyaltyStore = create<LoyaltyStore>((set, get) => ({
               points,
               type: 'earned',
               description: `Pontos ganhos pelo serviço: ${appointment.service?.name || 'Serviço'}`,
-              created_at: Timestamp.now(),
+              createdAt: Timestamp.now(),
             })
           }
         }

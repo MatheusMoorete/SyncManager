@@ -35,9 +35,7 @@ export const CustomerCard: FC<CustomerCardProps> = ({
     >
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-medium text-heading">{customer.full_name}</h3>
-        <span className="text-sm text-muted-foreground">
-          {customer.points || 0} pontos
-        </span>
+        <span className="text-sm text-muted-foreground">{customer.points || 0} pontos</span>
       </div>
 
       {!compact && (
@@ -49,12 +47,12 @@ export const CustomerCard: FC<CustomerCardProps> = ({
 
           <div className="flex justify-between text-sm text-muted-foreground">
             <span>Aniversário: {customer.birth_date}</span>
-            {customer.created_at && (
-              <span>Cliente desde: {new Date(customer.created_at).toLocaleDateString('pt-BR')}</span>
+            {customer.createdAt && (
+              <span>Cliente desde: {customer.createdAt.toDate().toLocaleDateString('pt-BR')}</span>
             )}
           </div>
         </>
       )}
     </div>
   )
-} 
+}
