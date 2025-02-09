@@ -50,7 +50,7 @@ import {
 } from '@/components/ui/alert-dialog'
 
 export default function FinancePage() {
-  const { transactions, stats, isLoading, error, actions } = useFinanceStore()
+  const { transactions, stats, loading, error, actions } = useFinanceStore()
   const [transactionToEdit, setTransactionToEdit] = useState<Transaction | null>(null)
   const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null)
 
@@ -80,7 +80,7 @@ export default function FinancePage() {
     }
   }
 
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -215,10 +215,7 @@ export default function FinancePage() {
                   <TableRow key={transaction.id} className="hover:bg-neutral-cream/10">
                     <TableCell className="font-medium whitespace-nowrap">
                       {(() => {
-                        const datePart = transaction.transaction_date.split('T')[0]
-                        const [year, month, day] = datePart.split('-').map(Number)
-                        const date = new Date(year, month - 1, day)
-                        date.setHours(12, 0, 0, 0)
+                        const date = transaction.transactionDate.toDate()
                         return format(date, 'dd/MM/yyyy', { locale: ptBR })
                       })()}
                     </TableCell>
@@ -227,10 +224,10 @@ export default function FinancePage() {
                         <span>{transaction.notes || '-'}</span>
                         <span className="text-xs text-muted-foreground sm:hidden">
                           {transaction.category} •{' '}
-                          {transaction.payment_method
-                            ? transaction.payment_method
+                          {transaction.paymentMethod
+                            ? transaction.paymentMethod
                                 .split('_')
-                                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                                .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
                                 .join(' ')
                             : '-'}
                         </span>
@@ -238,10 +235,10 @@ export default function FinancePage() {
                     </TableCell>
                     <TableCell className="hidden sm:table-cell">{transaction.category}</TableCell>
                     <TableCell className="hidden sm:table-cell">
-                      {transaction.payment_method
-                        ? transaction.payment_method
+                      {transaction.paymentMethod
+                        ? transaction.paymentMethod
                             .split('_')
-                            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                            .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
                             .join(' ')
                         : '-'}
                     </TableCell>

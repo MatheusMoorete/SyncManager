@@ -1,0 +1,145 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Função helper para verificar autenticação
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Função helper para verificar propriedade
+    function isOwner(resource) {
+      return resource.data.ownerId == request.auth.uid;
+    }
+
+    // Função helper para verificar dados de criação
+    function hasValidOwner() {
+      return request.resource.data.ownerId == request.auth.uid;
+    }
+
+    // Função helper para validar campos obrigatórios do cliente
+    function hasValidCustomerFields() {
+      let data = request.resource.data;
+      return data.fullName is string &&
+             data.phone is string &&
+             data.ownerId is string &&
+             data.active is bool &&
+             data.points is number;
+    }
+
+    match /customers/{customerId} {
+      allow read: if isAuthenticated() && (
+        resource == null || isOwner(resource)
+      );
+      allow create: if isAuthenticated() &&
+        request.resource.data.ownerId == request.auth.uid &&
+        request.resource.data.active == true &&
+        request.resource.data.points == 0 &&
+        request.resource.data.full_name is string &&
+        request.resource.data.phone is string &&
+        (request.resource.data.email == null || request.resource.data.email is string) &&
+        (request.resource.data.birth_date == null || request.resource.data.birth_date is string) &&
+        (request.resource.data.notes == null || request.resource.data.notes is string);
+      allow update: if isAuthenticated() && isOwner(resource);
+      allow delete: if isAuthenticated() && isOwner(resource);
+    }
+
+    match /services/{serviceId} {
+      allow read: if isAuthenticated() && (
+        resource == null || isOwner(resource)
+      );
+      allow create: if isAuthenticated() && hasValidOwner();
+      allow update, delete: if isAuthenticated() && isOwner(resource);
+    }
+
+    match /appointments/{appointmentId} {
+      allow read: if isAuthenticated() && (
+        resource == null || isOwner(resource)
+      );
+      allow create: if isAuthenticated() && hasValidOwner();
+      allow update, delete: if isAuthenticated() && isOwner(resource);
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated() && (
+        resource == null || isOwner(resource)
+      );
+      allow create: if isAuthenticated() && hasValidOwner();
+      allow update, delete: if isAuthenticated() && isOwner(resource);
+    }
+
+    match /settings/{userId} {
+      allow read, write: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    match /profiles/{userId} {
+      allow read, write: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    match /analytics/{eventId} {
+      allow read: if isAuthenticated() && (
+        resource == null || isOwner(resource)
+      );
+      allow create: if isAuthenticated() && hasValidOwner();
+      allow update: if false; // Eventos são imutáveis
+      allow delete: if false; // Não permitir deleção
+    }
+
+    match /pending_operations/{opId} {
+      allow read: if isAuthenticated() && (
+        resource == null || isOwner(resource)
+      );
+      allow create: if isAuthenticated() && hasValidOwner();
+      allow update: if isAuthenticated() && isOwner(resource);
+      allow delete: if isAuthenticated() && isOwner(resource);
+    }
+
+    match /business_hours/{userId} {
+      allow read, write: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    match /loyalty_config/{userId} {
+      allow read, write: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    match /loyalty_points/{clientId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && (
+        get(/databases/$(database)/documents/customers/$(clientId)).data.ownerId == request.auth.uid
+      );
+    }
+
+    match /points_history/{historyId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && hasValidOwner();
+      allow update: if isAuthenticated() && isOwner(resource);
+      allow delete: if isAuthenticated() && isOwner(resource);
+    }
+
+    match /transactions/{transactionId} {
+      allow read: if isAuthenticated() && (
+        resource == null || isOwner(resource)
+      );
+      allow create: if isAuthenticated() && hasValidOwner();
+      allow update: if isAuthenticated() && isOwner(resource);
+      allow delete: if isAuthenticated() && isOwner(resource);
+    }
+
+    match /expenses/{expenseId} {
+      allow read: if isAuthenticated() && (
+        resource == null || isOwner(resource)
+      );
+      allow create: if isAuthenticated() && hasValidOwner();
+      allow update: if isAuthenticated() && isOwner(resource);
+      allow delete: if isAuthenticated() && isOwner(resource);
+    }
+
+    match /financial_categories/{categoryId} {
+      allow read: if isAuthenticated() && (
+        resource == null || isOwner(resource)
+      );
+      allow create: if isAuthenticated() && hasValidOwner();
+      allow update: if isAuthenticated() && isOwner(resource);
+      allow delete: if isAuthenticated() && isOwner(resource);
+    }
+  }
+} 

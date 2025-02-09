@@ -1,92 +1,60 @@
-import { z } from "zod"
-
-export const customerSchema = z.object({
-  id: z.string().optional(),
-  full_name: z.string().min(1, "Nome é obrigatório"),
-  phone: z.string().min(14, "Telefone inválido").max(15, "Telefone inválido"),
-  email: z.string().email("E-mail inválido").optional().or(z.literal("")),
-  birth_date: z.string()
-    .regex(/^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/\d{4}$/, "Data inválida (use DD/MM/AAAA)")
-    .refine((date) => {
-      if (!date) return true;
-      const [day, month, year] = date.split('/').map(Number);
-      const dateObj = new Date(year, month - 1, day);
-      return dateObj.getDate() === day && 
-             dateObj.getMonth() === month - 1 && 
-             dateObj.getFullYear() === year &&
-             dateObj <= new Date();
-    }, "Data de nascimento inválida")
-    .optional()
-    .or(z.literal("")),
-  notes: z.string().optional().or(z.literal("")),
-  created_at: z.string().optional(),
-  updated_at: z.string().optional(),
-  points: z.number().default(0),
-  loyalty_points: z.object({
-    points_earned: z.number(),
-    points_spent: z.number(),
-    created_at: z.string(),
-    updated_at: z.string()
-  }).optional(),
-  appointments: z.array(z.object({
-    id: z.string(),
-    scheduled_time: z.string(),
-    final_price: z.number(),
-    status: z.enum(['scheduled', 'completed', 'canceled', 'no_show']),
-    notes: z.string().nullable(),
-    service: z.object({
-      name: z.string(),
-      duration: z.string(),
-      base_price: z.number()
-    })
-  })).optional()
-})
-
-export type Customer = z.infer<typeof customerSchema>
+import { z } from 'zod'
+import { Timestamp } from 'firebase/firestore'
 
 export const customerFormSchema = z.object({
-  name: z.string().min(1, "Nome é obrigatório"),
-  phone: z.string().min(14, "Telefone inválido").max(15, "Telefone inválido"),
-  email: z.string().email("E-mail inválido").optional().or(z.literal("")),
-  birthDate: z.string()
-    .regex(/^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/\d{4}$/, "Data inválida (use DD/MM/AAAA)")
-    .refine((date) => {
-      if (!date) return true;
-      const [day, month, year] = date.split('/').map(Number);
-      const dateObj = new Date(year, month - 1, day);
-      return dateObj.getDate() === day && 
-             dateObj.getMonth() === month - 1 && 
-             dateObj.getFullYear() === year &&
-             dateObj <= new Date();
-    }, "Data de nascimento inválida")
+  fullName: z
+    .string()
+    .min(1, 'Nome é obrigatório')
+    .transform(value => value.trim()),
+  phone: z
+    .string()
+    .min(1, 'Telefone é obrigatório')
+    .regex(/^\(\d{2}\)\s\d{5}-\d{4}$/, 'Telefone inválido. Use o formato (99) 99999-9999'),
+  email: z
+    .string()
+    .email('Email inválido')
     .optional()
-    .or(z.literal("")),
-  notes: z.string().optional().or(z.literal(""))
+    .nullable()
+    .transform(value => (value === '' ? null : value)),
+  birthDate: z
+    .string()
+    .regex(
+      /^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/\d{4}$/,
+      'Data inválida. Use o formato DD/MM/AAAA'
+    )
+    .optional()
+    .nullable()
+    .transform(value => (value === '' ? null : value)),
+  notes: z
+    .string()
+    .optional()
+    .nullable()
+    .transform(value => (value === '' ? null : value)),
 })
 
-export type CustomerFormValues = {
-  name: string
-  phone: string
-  email?: string
-  birthDate?: string
-  notes?: string
-}
+export type CustomerFormValues = z.infer<typeof customerFormSchema>
 
-export type CustomerWithHistory = Customer & {
-  appointments: {
-    id: string
-    date: Date
-    service: string
-    value: number
-    status: "completed" | "cancelled" | "scheduled"
-  }[]
+export interface Customer {
+  id?: string
+  full_name: string
+  email: string | null
+  phone: string
+  birth_date: string | null
+  notes: string | null
+  ownerId: string
+  createdAt: Timestamp
+  updatedAt: Timestamp
+  deletedAt?: Timestamp | null
+  active: boolean
+  points: number
 }
 
 export interface CustomerFilters {
-  search: string
-  sortBy: 'name' | 'recent' | 'points'
-  sortOrder: 'asc' | 'desc'
-  birthMonth?: number
+  search?: string
+  sortBy?: 'full_name' | 'recent' | 'points'
+  sortOrder?: 'asc' | 'desc'
+  perPage?: number
   hasEmail?: boolean
   hasNotes?: boolean
-} 
+  onlyActive?: boolean
+}

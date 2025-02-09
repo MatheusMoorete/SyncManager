@@ -20,6 +20,7 @@ import { useEffect, useState } from 'react'
 import { format, parseISO, startOfMonth, endOfMonth } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { useScheduleStore } from '@/store/schedule-store'
+import { useServiceStore } from '@/store/service-store'
 import { AppLayout } from '@/components/layout/app-layout'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -38,11 +39,13 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Search, Calendar, ChevronDown, Loader2, Filter } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import { Timestamp } from 'firebase/firestore'
 
 /** Status possíveis para um atendimento */
 type AppointmentStatus = 'scheduled' | 'completed' | 'canceled' | 'no_show'
@@ -62,6 +65,7 @@ interface CompletionDialogData {
 
 export default function AtendimentosPage() {
   const { appointments, isLoading, actions } = useScheduleStore()
+  const { actions: serviceActions } = useServiceStore()
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<FilterStatus>('all')
   const [startDate, setStartDate] = useState<string>(format(startOfMonth(new Date()), 'yyyy-MM-dd'))
@@ -139,16 +143,28 @@ export default function AtendimentosPage() {
 
     try {
       setIsSaving(true)
-      await actions.updateAppointment(appointmentId, {
+
+      // Criar objeto base de atualização
+      const updateData: any = {
         client_id: appointment.client_id,
         service_id: appointment.service_id,
         scheduled_time: appointment.scheduled_time,
         final_price: completionData?.finalPrice || appointment.final_price,
         status,
-        actual_duration: completionData?.duration || undefined,
-        notes: completionData?.notes || undefined,
-        discount: appointment.discount || undefined,
-      })
+      }
+
+      // Adicionar campos opcionais apenas se tiverem valor
+      if (completionData?.duration) {
+        updateData.actual_duration = completionData.duration
+      }
+      if (completionData?.notes) {
+        updateData.notes = completionData.notes
+      }
+      if (appointment.discount) {
+        updateData.discount = appointment.discount
+      }
+
+      await actions.updateAppointment(appointmentId, updateData)
 
       // Se o status for 'completed', criar uma transação financeira
       if (status === 'completed') {
@@ -159,14 +175,16 @@ export default function AtendimentosPage() {
           type: 'income',
           category: 'Serviços',
           amount: completionData?.finalPrice || appointment.final_price,
-          payment_method: 'pix', // Método padrão, pode ser ajustado conforme necessário
-          transaction_date: new Date().toISOString(),
+          paymentMethod: 'pix',
+          transactionDate: Timestamp.fromDate(new Date()),
           notes: `Atendimento: ${appointment.service.name} - Cliente: ${appointment.client.full_name}`,
-          client_id: appointment.client_id,
-          receipt_url: null, // Campo obrigatório, mas opcional na prática
+          clientId: appointment.client_id,
+          receiptUrl: null,
         })
 
-        toast.success('Atendimento concluído e receita registrada com sucesso!')
+        toast.success('Atendimento concluído com sucesso!')
+      } else {
+        toast.success('Status do atendimento atualizado!')
       }
     } catch (error) {
       console.error('Error updating appointment:', error)
@@ -190,15 +208,21 @@ export default function AtendimentosPage() {
       return
     }
 
-    // Validar formato da duração (HH:mm:ss)
-    const durationRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9]$/
-    if (!durationRegex.test(completionData.duration)) {
-      toast.error('Duração inválida. Use o formato HH:mm:ss')
+    // Converter minutos para o formato HH:mm:ss
+    const minutes = parseInt(completionData.duration)
+    if (isNaN(minutes)) {
+      toast.error('Duração inválida')
       return
     }
 
+    const hours = Math.floor(minutes / 60)
+    const remainingMinutes = minutes % 60
+    const formattedDuration = `${hours.toString().padStart(2, '0')}:${remainingMinutes
+      .toString()
+      .padStart(2, '0')}:00`
+
     await updateAppointmentStatus(completionDialog.appointmentId, 'completed', {
-      duration: completionData.duration,
+      duration: formattedDuration,
       finalPrice,
       notes: completionData.notes,
     })
@@ -383,7 +407,9 @@ export default function AtendimentosPage() {
                         <div className="flex items-center gap-2">
                           <span className="text-sm">{appointment.service.name}</span>
                           <span className="text-sm text-muted-foreground">•</span>
-                          <span className="text-sm">R$ {appointment.final_price.toFixed(2)}</span>
+                          <span className="text-sm">
+                            R$ {Number(appointment.final_price).toFixed(2)}
+                          </span>
                         </div>
                         {appointment.notes && (
                           <div className="text-sm text-muted-foreground">{appointment.notes}</div>
@@ -436,6 +462,9 @@ export default function AtendimentosPage() {
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Concluir Atendimento</DialogTitle>
+              <DialogDescription>
+                Preencha os detalhes para concluir o atendimento
+              </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-6 py-4">
@@ -452,12 +481,14 @@ export default function AtendimentosPage() {
                     <div className="space-y-2">
                       <label className="text-sm font-medium">Duração</label>
                       <Input
-                        placeholder="HH:mm:ss"
+                        type="number"
+                        placeholder="Duração em minutos"
                         value={completionData.duration}
                         onChange={e =>
                           setCompletionData(prev => ({ ...prev, duration: e.target.value }))
                         }
                       />
+                      <p className="text-xs text-muted-foreground">Digite a duração em minutos</p>
                     </div>
 
                     <div className="space-y-2">
@@ -477,7 +508,7 @@ export default function AtendimentosPage() {
                         />
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        Valor base: R$ {completionDialog.basePrice.toFixed(2)}
+                        Valor base: R$ {Number(completionDialog.basePrice).toFixed(2)}
                       </p>
                     </div>
 

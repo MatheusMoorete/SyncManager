@@ -1,6 +1,8 @@
-import { Search } from "lucide-react"
-import { Input } from "@/components/ui/input"
-import { FilterSortMenu } from "./filter-sort-menu"
+'use client'
+
+import { Search } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { FilterSortMenu } from './filter-sort-menu'
 
 interface SearchBarProps {
   value: string
@@ -25,7 +27,7 @@ interface SearchBarProps {
 export function SearchBar({
   value,
   onChange,
-  placeholder = "Buscar...",
+  placeholder = 'Buscar...',
   filterOptions,
   sortOptions,
   currentSortBy,
@@ -40,7 +42,7 @@ export function SearchBar({
         <Input
           placeholder={placeholder}
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={e => onChange(e.target.value)}
           className="pl-9 bg-white rounded-lg border border-input h-10"
         />
       </div>
@@ -56,4 +58,4 @@ export function SearchBar({
       )}
     </div>
   )
-} 
+}

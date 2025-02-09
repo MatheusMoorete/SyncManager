@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { User } from '@supabase/supabase-js'
+import { User } from 'firebase/auth'
 
 interface AuthState {
   user: User | null
@@ -11,14 +11,14 @@ interface AuthState {
 
 export const useAuthStore = create<AuthState>()(
   persist(
-    (set) => ({
+    set => ({
       user: null,
       loading: true,
-      setUser: (user) => set({ user }),
-      setLoading: (loading) => set({ loading }),
+      setUser: user => set({ user }),
+      setLoading: loading => set({ loading }),
     }),
     {
       name: 'auth-storage',
     }
   )
-) 
+)

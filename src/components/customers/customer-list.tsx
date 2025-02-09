@@ -27,11 +27,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuCheckboxItem,
 } from '@/components/ui/dropdown-menu'
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import {
@@ -48,7 +44,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
+} from '@/components/ui/table'
 import { CustomerForm } from '@/components/customers/forms/customer-form'
 import { CustomerDialog } from '@/components/customers/dialogs/customer-dialog'
 import { CustomerListItem } from './cards/customer-list-item'
@@ -61,21 +57,16 @@ export interface CustomerListProps {
   isLoading?: boolean
 }
 
-export function CustomerList({
-  customers,
-  onUpdate,
-  onDelete,
-  isLoading
-}: CustomerListProps) {
+export function CustomerList({ customers, onUpdate, onDelete, isLoading }: CustomerListProps) {
   const { filters, actions } = useCustomerStore()
-  const [search, setSearch] = useState("")
+  const [search, setSearch] = useState('')
   const router = useRouter()
 
   // Opções de ordenação
   const sortOptions = [
-    { label: 'Nome', value: 'name' },
+    { label: 'Nome', value: 'full_name' },
     { label: 'Mais recentes', value: 'recent' },
-    { label: 'Pontos', value: 'points' }
+    { label: 'Pontos', value: 'points' },
   ]
 
   // Opções de filtro
@@ -84,14 +75,16 @@ export function CustomerList({
       label: 'Com e-mail',
       value: 'hasEmail',
       checked: filters.hasEmail === true,
-      onCheckedChange: (checked: boolean) => actions.updateFilters({ hasEmail: checked || undefined })
+      onCheckedChange: (checked: boolean) =>
+        actions.updateFilters({ hasEmail: checked || undefined }),
     },
     {
       label: 'Com observações',
       value: 'hasNotes',
       checked: filters.hasNotes === true,
-      onCheckedChange: (checked: boolean) => actions.updateFilters({ hasNotes: checked || undefined })
-    }
+      onCheckedChange: (checked: boolean) =>
+        actions.updateFilters({ hasNotes: checked || undefined }),
+    },
   ]
 
   // Atualizar filtros quando a busca mudar
@@ -104,7 +97,7 @@ export function CustomerList({
     if (!search) return customers
 
     const searchLower = search.toLowerCase()
-    return customers.filter((customer) => {
+    return customers.filter(customer => {
       return (
         customer.full_name.toLowerCase().includes(searchLower) ||
         customer.phone.includes(search) ||
@@ -118,51 +111,55 @@ export function CustomerList({
   }
 
   const handleDeleteCustomer = async (id: string, name: string) => {
-    toast.custom((t) => (
-      <div className="p-4 bg-white rounded-lg shadow-lg border border-charcoal/10">
-        <h3 className="font-medium text-charcoal mb-2">Confirmar exclusão</h3>
-        <p className="text-sm text-charcoal/60 mb-4">
-          Tem certeza que deseja excluir o cliente <span className="font-medium text-charcoal">{name}</span>?
-        </p>
-        <div className="flex justify-end gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => toast.dismiss(t)}
-            className="hover:bg-neutral-cream/50"
-          >
-            Cancelar
-          </Button>
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={async () => {
-              await onDelete(id)
-              toast.dismiss(t)
-            }}
-            className="bg-red-500 hover:bg-red-600 text-white"
-          >
-            Excluir
-          </Button>
+    toast.custom(
+      t => (
+        <div className="p-4 bg-white rounded-lg shadow-lg border border-charcoal/10">
+          <h3 className="font-medium text-charcoal mb-2">Confirmar exclusão</h3>
+          <p className="text-sm text-charcoal/60 mb-4">
+            Tem certeza que deseja excluir o cliente{' '}
+            <span className="font-medium text-charcoal">{name}</span>?
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => toast.dismiss(t)}
+              className="hover:bg-neutral-cream/50"
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={async () => {
+                await onDelete(id)
+                toast.dismiss(t)
+              }}
+              className="bg-red-500 hover:bg-red-600 text-white"
+            >
+              Excluir
+            </Button>
+          </div>
         </div>
-      </div>
-    ), {
-      duration: Infinity,
-    })
+      ),
+      {
+        duration: Infinity,
+      }
+    )
   }
 
   const formatBirthDate = (date: string | null | undefined) => {
-    if (!date) return undefined;
+    if (!date) return undefined
     try {
       // Se a data já estiver no formato DD/MM/YYYY, retorna como está
       if (date.includes('/')) {
-        return date;
+        return date
       }
       // Se estiver no formato YYYY-MM-DD, converte para DD/MM/YYYY
-      const parsedDate = parse(date, 'yyyy-MM-dd', new Date());
-      return format(parsedDate, 'dd/MM/yyyy', { locale: ptBR });
+      const parsedDate = parse(date, 'yyyy-MM-dd', new Date())
+      return format(parsedDate, 'dd/MM/yyyy', { locale: ptBR })
     } catch {
-      return date;
+      return date
     }
   }
 
@@ -181,8 +178,10 @@ export function CustomerList({
         sortOptions={sortOptions}
         currentSortBy={filters.sortBy}
         currentSortOrder={filters.sortOrder}
-        onSortByChange={(value) => actions.updateFilters({ sortBy: value as 'name' | 'recent' | 'points' })}
-        onSortOrderChange={(value) => actions.updateFilters({ sortOrder: value })}
+        onSortByChange={value =>
+          actions.updateFilters({ sortBy: value as 'full_name' | 'recent' | 'points' })
+        }
+        onSortOrderChange={value => actions.updateFilters({ sortOrder: value })}
       />
 
       {/* Versão Desktop */}
@@ -193,8 +192,12 @@ export function CustomerList({
               <TableHead className="w-[250px] text-heading font-heading">CLIENTE</TableHead>
               <TableHead className="w-[250px] text-heading font-heading">EMAIL</TableHead>
               <TableHead className="w-[180px] text-heading font-heading">TELEFONE</TableHead>
-              <TableHead className="w-[150px] text-heading font-heading text-center">ANIVERSÁRIO</TableHead>
-              <TableHead className="w-[100px] text-heading font-heading text-center">PONTOS</TableHead>
+              <TableHead className="w-[150px] text-heading font-heading text-center">
+                ANIVERSÁRIO
+              </TableHead>
+              <TableHead className="w-[100px] text-heading font-heading text-center">
+                PONTOS
+              </TableHead>
               <TableHead className="w-[70px] text-heading font-heading"></TableHead>
             </TableRow>
           </TableHeader>
@@ -206,9 +209,9 @@ export function CustomerList({
                 </TableCell>
               </TableRow>
             ) : (
-              filteredCustomers.map((customer) => (
-                <TableRow 
-                  key={customer.id} 
+              filteredCustomers.map(customer => (
+                <TableRow
+                  key={`desktop-${customer.id}`}
                   className="hover:bg-neutral-cream/10 cursor-pointer group"
                   onClick={() => handleCustomerClick(customer.id!)}
                 >
@@ -242,19 +245,19 @@ export function CustomerList({
                         <Button
                           variant="ghost"
                           className="h-8 w-8 p-0 hover:bg-neutral-cream/50"
-                          onClick={(e) => e.stopPropagation()}
+                          onClick={e => e.stopPropagation()}
                         >
                           <span className="sr-only">Abrir menu</span>
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent 
-                        align="end" 
+                      <DropdownMenuContent
+                        align="end"
                         className="w-[160px]"
-                        onClick={(e) => e.stopPropagation()}
+                        onClick={e => e.stopPropagation()}
                       >
                         <DropdownMenuItem
-                          onClick={(e) => {
+                          onClick={e => {
                             e.stopPropagation()
                             handleCustomerClick(customer.id!)
                           }}
@@ -265,9 +268,9 @@ export function CustomerList({
                         </DropdownMenuItem>
                         <CustomerDialog
                           trigger={
-                            <div onClick={(e) => e.stopPropagation()}>
+                            <div onClick={e => e.stopPropagation()}>
                               <DropdownMenuItem
-                                onSelect={(e) => {
+                                onSelect={e => {
                                   e.preventDefault()
                                   e.stopPropagation()
                                 }}
@@ -280,19 +283,19 @@ export function CustomerList({
                           }
                           title="Editar Cliente"
                           initialData={{
-                            name: customer.full_name,
+                            fullName: customer.full_name,
                             phone: customer.phone,
                             email: customer.email || '',
                             birthDate: customer.birth_date || '',
                             notes: customer.notes || '',
                           }}
-                          onSubmit={async (data) => {
+                          onSubmit={async data => {
                             await handleUpdateCustomer(customer.id!, data)
                           }}
                           isLoading={isLoading}
                         />
                         <DropdownMenuItem
-                          onClick={(e) => {
+                          onClick={e => {
                             e.stopPropagation()
                             handleDeleteCustomer(customer.id!, customer.full_name)
                           }}
@@ -314,13 +317,11 @@ export function CustomerList({
       {/* Versão Mobile */}
       <div className="md:hidden space-y-4">
         {filteredCustomers.length === 0 ? (
-          <div className="text-center py-6 text-muted-foreground">
-            Nenhum cliente encontrado
-          </div>
+          <div className="text-center py-6 text-muted-foreground">Nenhum cliente encontrado</div>
         ) : (
-          filteredCustomers.map((customer) => (
+          filteredCustomers.map(customer => (
             <div
-              key={customer.id}
+              key={`mobile-${customer.id}`}
               className="bg-white rounded-lg border p-4 space-y-3 cursor-pointer group active:bg-neutral-cream/30 hover:border-terracotta/20 hover:shadow-md transition-all duration-200"
               onClick={() => handleCustomerClick(customer.id!)}
             >
@@ -341,19 +342,19 @@ export function CustomerList({
                       <Button
                         variant="ghost"
                         className="h-8 w-8 p-0 hover:bg-neutral-cream/50"
-                        onClick={(e) => e.stopPropagation()}
+                        onClick={e => e.stopPropagation()}
                       >
                         <span className="sr-only">Abrir menu</span>
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent 
-                      align="end" 
+                    <DropdownMenuContent
+                      align="end"
                       className="w-[160px]"
-                      onClick={(e) => e.stopPropagation()}
+                      onClick={e => e.stopPropagation()}
                     >
                       <DropdownMenuItem
-                        onClick={(e) => {
+                        onClick={e => {
                           e.stopPropagation()
                           handleCustomerClick(customer.id!)
                         }}
@@ -364,9 +365,9 @@ export function CustomerList({
                       </DropdownMenuItem>
                       <CustomerDialog
                         trigger={
-                          <div onClick={(e) => e.stopPropagation()}>
+                          <div onClick={e => e.stopPropagation()}>
                             <DropdownMenuItem
-                              onSelect={(e) => {
+                              onSelect={e => {
                                 e.preventDefault()
                                 e.stopPropagation()
                               }}
@@ -379,19 +380,19 @@ export function CustomerList({
                         }
                         title="Editar Cliente"
                         initialData={{
-                          name: customer.full_name,
+                          fullName: customer.full_name,
                           phone: customer.phone,
                           email: customer.email || '',
                           birthDate: customer.birth_date || '',
                           notes: customer.notes || '',
                         }}
-                        onSubmit={async (data) => {
+                        onSubmit={async data => {
                           await handleUpdateCustomer(customer.id!, data)
                         }}
                         isLoading={isLoading}
                       />
                       <DropdownMenuItem
-                        onClick={(e) => {
+                        onClick={e => {
                           e.stopPropagation()
                           handleDeleteCustomer(customer.id!, customer.full_name)
                         }}
@@ -416,4 +417,4 @@ export function CustomerList({
       </div>
     </div>
   )
-} 
+}

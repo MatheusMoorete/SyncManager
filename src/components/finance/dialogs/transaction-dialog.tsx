@@ -34,6 +34,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { useFinanceStore } from '@/store/finance-store'
 import type { Transaction } from '@/store/finance-store'
 import { format } from 'date-fns'
+import { Timestamp } from 'firebase/firestore'
 
 const transactionSchema = z.object({
   type: z.enum(['income', 'expense']),
@@ -42,9 +43,11 @@ const transactionSchema = z.object({
     .string()
     .min(1, 'Valor é obrigatório')
     .transform(val => parseFloat(val)),
-  payment_method: z.enum(['cash', 'credit_card', 'debit_card', 'pix']),
-  notes: z.string().nullable().optional(),
-  transaction_date: z.string().min(1, 'Data é obrigatória'),
+  paymentMethod: z.enum(['cash', 'credit_card', 'debit_card', 'pix']).nullable(),
+  notes: z.string().nullable(),
+  transactionDate: z.string().min(1, 'Data é obrigatória'),
+  clientId: z.string().nullable(),
+  receiptUrl: z.string().nullable(),
 })
 
 type TransactionFormValues = z.infer<typeof transactionSchema>
@@ -76,58 +79,64 @@ export function TransactionDialog({
       type: transaction?.type || 'income',
       category: transaction?.category || '',
       amount: transaction?.amount || 0,
-      payment_method: transaction?.payment_method || undefined,
-      notes: transaction?.notes || '',
-      transaction_date: transaction?.transaction_date
-        ? format(new Date(transaction.transaction_date), 'yyyy-MM-dd')
+      paymentMethod: transaction?.paymentMethod || null,
+      notes: transaction?.notes || null,
+      transactionDate: transaction?.transactionDate
+        ? format(transaction.transactionDate.toDate(), 'yyyy-MM-dd')
         : format(new Date(), 'yyyy-MM-dd'),
+      clientId: transaction?.clientId || null,
+      receiptUrl: transaction?.receiptUrl || null,
     },
   })
 
   const onSubmit = async (data: TransactionFormValues) => {
     try {
       setIsSubmitting(true)
-      const [year, month, day] = data.transaction_date.split('-').map(Number)
+      const [year, month, day] = data.transactionDate.split('-').map(Number)
       const adjustedDate = new Date(year, month - 1, day, 12, 0, 0)
 
+      const transactionData = {
+        type: data.type,
+        category: data.category,
+        amount: data.amount,
+        paymentMethod: data.paymentMethod,
+        notes: data.notes,
+        transactionDate: Timestamp.fromDate(adjustedDate),
+        clientId: data.clientId,
+        receiptUrl: data.receiptUrl,
+      }
+
       if (transaction) {
-        // Editing existing transaction
-        await actions.updateTransaction(transaction.id, {
-          ...data,
-          transaction_date: adjustedDate.toISOString(),
-          client_id: transaction.client_id,
-          receipt_url: transaction.receipt_url,
-          notes: data.notes || null,
-        })
-        toast.success(`${data.type === 'income' ? 'Receita' : 'Despesa'} atualizada com sucesso.`, {
-          style: {
-            background: data.type === 'income' ? 'rgb(var(--soft-sage))' : 'rgb(var(--terracotta))',
-            color: 'white',
-          },
-        })
+        await actions.updateTransaction(transaction.id, transactionData)
       } else {
-        // Creating new transaction
-        await actions.addTransaction({
-          ...data,
-          transaction_date: adjustedDate.toISOString(),
-          client_id: null,
-          receipt_url: null,
-          notes: data.notes || null,
-        })
-        toast.success(`${data.type === 'income' ? 'Receita' : 'Despesa'} adicionada com sucesso.`, {
-          style: {
-            background: data.type === 'income' ? 'rgb(var(--soft-sage))' : 'rgb(var(--terracotta))',
-            color: 'white',
-          },
-        })
+        await actions.addTransaction(transactionData)
       }
 
       form.reset()
       setIsOpen(false)
+
+      setTimeout(() => {
+        toast.success(
+          `${data.type === 'income' ? 'Receita' : 'Despesa'} ${
+            transaction ? 'atualizada' : 'adicionada'
+          } com sucesso.`,
+          {
+            style: {
+              background:
+                data.type === 'income' ? 'rgb(var(--soft-sage))' : 'rgb(var(--terracotta))',
+              color: 'white',
+            },
+          }
+        )
+      }, 0)
     } catch (error) {
-      toast.error(
-        `Não foi possível ${transaction ? 'atualizar' : 'adicionar'} a transação. Tente novamente.`
-      )
+      setTimeout(() => {
+        toast.error(
+          `Não foi possível ${
+            transaction ? 'atualizar' : 'adicionar'
+          } a transação. Tente novamente.`
+        )
+      }, 0)
       console.error('Erro ao processar transação:', error)
     } finally {
       setIsSubmitting(false)
@@ -156,7 +165,7 @@ export function TransactionDialog({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-sm">Tipo</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} defaultValue={field.value ?? undefined}>
                       <FormControl>
                         <SelectTrigger className="h-9">
                           <SelectValue placeholder="Selecione" />
@@ -201,7 +210,7 @@ export function TransactionDialog({
               render={({ field }) => (
                 <FormItem>
                   <FormLabel className="text-sm">Categoria</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} defaultValue={field.value ?? undefined}>
                     <FormControl>
                       <SelectTrigger className="h-9">
                         <SelectValue placeholder="Selecione a categoria" />
@@ -232,11 +241,11 @@ export function TransactionDialog({
             <div className="grid grid-cols-2 gap-3">
               <FormField
                 control={form.control}
-                name="payment_method"
+                name="paymentMethod"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-sm">Pagamento</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} defaultValue={field.value ?? undefined}>
                       <FormControl>
                         <SelectTrigger className="h-9">
                           <SelectValue placeholder="Método" />
@@ -256,7 +265,7 @@ export function TransactionDialog({
 
               <FormField
                 control={form.control}
-                name="transaction_date"
+                name="transactionDate"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-sm">Data</FormLabel>

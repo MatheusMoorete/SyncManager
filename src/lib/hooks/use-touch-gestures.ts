@@ -1,3 +1,5 @@
+'use client'
+
 /**
  * @hook useTouchGestures
  * @description Hook para gerenciar gestos móveis (swipe, long press, etc)
@@ -24,7 +26,7 @@ export function useTouchGestures({
   onSwipeRight,
   onLongPress,
   swipeThreshold = 50,
-  longPressDelay = 500
+  longPressDelay = 500,
 }: TouchGestureOptions) {
   const touchRef = useRef<TouchState | null>(null)
   const timerRef = useRef<NodeJS.Timeout>()
@@ -43,7 +45,7 @@ export function useTouchGestures({
     touchRef.current = {
       startX: touch.clientX,
       startY: touch.clientY,
-      startTime: Date.now()
+      startTime: Date.now(),
     }
 
     // Inicia timer para long press
@@ -105,8 +107,8 @@ export function useTouchGestures({
     touchHandlers: {
       onTouchStart: handleTouchStart,
       onTouchMove: handleTouchMove,
-      onTouchEnd: handleTouchEnd
+      onTouchEnd: handleTouchEnd,
     },
-    isLongPressing
+    isLongPressing,
   }
-} 
+}

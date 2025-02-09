@@ -29,6 +29,7 @@ import { Appointment } from '@/types/schedule'
 import { useScheduleStore } from '@/store/schedule-store'
 import { useServiceStore } from '@/store/service-store'
 import { cn } from '@/lib/utils'
+import { Timestamp } from 'firebase/firestore'
 
 interface AppointmentDetailsDialogProps {
   appointment: Appointment | null
@@ -120,31 +121,34 @@ export function AppointmentDetailsDialog({
       }
 
       // Atualizar agendamento
-      await scheduleActions.updateAppointment(appointment.id, {
-        client_id: appointment.client_id, // Mantém o mesmo cliente
+      const updatedData = {
+        client_id: appointment.client_id,
         service_id: editedData.service_id,
         scheduled_time: newDateTime.toISOString(),
-        final_price: selectedService.base_price, // Usa o preço do novo serviço
+        final_price: selectedService.price,
         status: editedData.status as 'scheduled' | 'completed' | 'canceled' | 'no_show',
         notes: editedData.notes || undefined,
-        actual_duration: selectedService.duration, // Usa a duração do novo serviço
-      })
+      }
+
+      await scheduleActions.updateAppointment(appointment.id, updatedData)
 
       // Se o status for 'completed', criar uma transação financeira
       if (editedData.status === 'completed') {
         const { useFinanceStore } = await import('@/store/finance-store')
         const financeStore = useFinanceStore.getState()
 
-        await financeStore.actions.addTransaction({
-          type: 'income',
+        const transactionData = {
+          type: 'income' as const,
           category: 'Serviços',
-          amount: selectedService.base_price,
-          payment_method: 'pix', // Método padrão, pode ser ajustado conforme necessário
-          transaction_date: new Date().toISOString(),
-          notes: `Atendimento: ${selectedService.name} - Cliente: ${appointment.client.full_name}`,
-          client_id: appointment.client_id,
-          receipt_url: null,
-        })
+          amount: selectedService.price,
+          paymentMethod: 'pix' as const,
+          notes: `Pagamento referente ao agendamento #${appointment.id}`,
+          transactionDate: Timestamp.fromDate(new Date(appointment.scheduled_time)),
+          clientId: appointment.client_id,
+          receiptUrl: null,
+        }
+
+        await financeStore.actions.addTransaction(transactionData)
 
         toast.success('Atendimento concluído e receita registrada com sucesso!')
       }

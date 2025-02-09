@@ -15,7 +15,6 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
-import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import {
   LayoutGrid,
@@ -30,6 +29,7 @@ import {
   ClipboardList,
   Star,
 } from 'lucide-react'
+import { signOut } from '@/lib/auth'
 
 /**
  * @const mainNavItems
@@ -115,19 +115,14 @@ interface SidebarProps {
 export function Sidebar({ onClose }: SidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
-  const supabase = createClient()
 
   const handleLogout = async () => {
     try {
-      const { error } = await supabase.auth.signOut()
-      if (error) throw error
-
-      // Redirecionar para a página de login
+      await signOut()
       router.push('/login')
-      toast.success('Logout realizado com sucesso')
     } catch (error) {
-      console.error('Error logging out:', error)
-      toast.error('Erro ao realizar logout')
+      console.error('Error signing out:', error)
+      toast.error('Erro ao sair')
     }
   }
 

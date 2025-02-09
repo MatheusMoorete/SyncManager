@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { 
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -24,9 +24,9 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Customer } from '@/types/customer'
 import { Service } from '@/types/service'
 import { Appointment } from '@/types/schedule'
-import { supabase } from '@/lib/supabase'
 import { cn } from '@/lib/utils'
 import { useBusinessHoursStore } from '@/store/business-hours-store'
+import { useAuthStore } from '@/store/auth-store'
 
 interface AppointmentFormProps {
   appointment?: Appointment
@@ -40,19 +40,23 @@ export function AppointmentForm({ appointment, onSuccess }: AppointmentFormProps
   const { customers, actions: customerActions } = useCustomerStore()
   const { services, actions: serviceActions } = useServiceStore()
   const { config: businessHours } = useBusinessHoursStore()
-  
+
   const [selectedClient, setSelectedClient] = useState<{
-    id: string;
-    name: string;
-    phone: string;
-  } | null>(appointment ? {
-    id: appointment.client_id,
-    name: appointment.client.full_name,
-    phone: appointment.client.phone || ''
-  } : null)
+    id: string
+    name: string
+    phone: string
+  } | null>(
+    appointment
+      ? {
+          id: appointment.client_id,
+          name: appointment.client.full_name,
+          phone: appointment.client.phone || '',
+        }
+      : null
+  )
   const [newClient, setNewClient] = useState({
     name: '',
-    phone: ''
+    phone: '',
   })
   const [selectedTime, setSelectedTime] = useState(
     appointment ? format(parseISO(appointment.scheduled_time), 'HH:mm') : ''
@@ -121,7 +125,9 @@ export function AppointmentForm({ appointment, onSuccess }: AppointmentFormProps
 
     // Verificar se não é horário de almoço
     if (businessHours.lunchbreak) {
-      const [lunchStartHour, lunchStartMinute] = businessHours.lunchbreak.start.split(':').map(Number)
+      const [lunchStartHour, lunchStartMinute] = businessHours.lunchbreak.start
+        .split(':')
+        .map(Number)
       const [lunchEndHour, lunchEndMinute] = businessHours.lunchbreak.end.split(':').map(Number)
 
       const lunchStartInMinutes = lunchStartHour * 60 + lunchStartMinute
@@ -157,54 +163,39 @@ export function AppointmentForm({ appointment, onSuccess }: AppointmentFormProps
         }
 
         // Criar novo cliente
-        const userResponse = await supabase.auth.getUser()
-        
-        if (!userResponse.data.user?.id) {
+        const { user } = useAuthStore.getState()
+
+        if (!user?.uid) {
           toast.error('Usuário não autenticado')
           return
         }
 
-        console.log('Tentando criar cliente:', {
-          full_name: newClient.name,
-          phone: newClient.phone.replace(/\D/g, ''),
-          owner_id: userResponse.data.user.id
-        })
-
-        const { data: createdClient, error: clientError } = await supabase
-          .from('clients')
-          .insert({
-            full_name: newClient.name,
+        try {
+          const newClientData = {
+            fullName: newClient.name,
             phone: newClient.phone.replace(/\D/g, ''),
-            owner_id: userResponse.data.user.id
-          })
-          .select('*')
-          .single()
-
-        if (clientError) {
-          console.error('Error creating client:', {
-            code: clientError.code,
-            message: clientError.message,
-            details: clientError.details,
-            hint: clientError.hint
-          })
-          if (clientError.code === '23505') {
-            toast.error('Já existe um cliente com este telefone')
-          } else {
-            toast.error(`Erro ao criar cliente: ${clientError.message}`)
           }
+
+          // Criar o cliente e atualizar a lista
+          await customerActions.createCustomer(newClientData)
+          await customerActions.fetchCustomers()
+
+          // Buscar o cliente recém-criado
+          const createdClient = customers.find(
+            c => c.full_name === newClientData.fullName && c.phone === newClientData.phone
+          )
+
+          if (!createdClient?.id) {
+            toast.error('Erro ao criar cliente')
+            return
+          }
+
+          clientId = createdClient.id
+        } catch (error) {
+          console.error('Error creating client:', error)
+          toast.error('Erro ao criar cliente')
           return
         }
-
-        if (!createdClient?.id) {
-          toast.error('Erro ao criar cliente: ID não retornado')
-          return
-        }
-
-        clientId = createdClient.id
-        console.log('Cliente criado com sucesso:', createdClient)
-
-        // Atualizar a lista de clientes
-        await customerActions.fetchCustomers()
       }
 
       if (!selectedService || !selectedTime) {
@@ -218,7 +209,7 @@ export function AppointmentForm({ appointment, onSuccess }: AppointmentFormProps
         const lunchBreak = businessHours?.lunchbreak
           ? ` (exceto ${businessHours.lunchbreak.start} - ${businessHours.lunchbreak.end})`
           : ''
-        
+
         toast.error(
           `Horário inválido. Escolha um horário entre ${formattedStart} e ${formattedEnd}${lunchBreak}`
         )
@@ -243,20 +234,18 @@ export function AppointmentForm({ appointment, onSuccess }: AppointmentFormProps
         client_id: clientId,
         service_id: selectedService.id!,
         scheduled_time: appointmentDate.toISOString(),
-        final_price: selectedService.base_price,
-        status: appointment?.status || 'scheduled' as const,
+        final_price: Number(selectedService.price),
+        status: appointment?.status || ('scheduled' as const),
         actual_duration: duration || undefined,
-        notes: notes || undefined
+        notes: notes || undefined,
       }
 
       if (appointment) {
         await scheduleActions.updateAppointment(appointment.id, appointmentData)
-        toast.success('Agendamento atualizado com sucesso!')
       } else {
         await scheduleActions.createAppointment(appointmentData)
-        toast.success('Agendamento realizado com sucesso!')
       }
-      
+
       onSuccess?.()
       if (!appointment) {
         resetForm()
@@ -270,16 +259,17 @@ export function AppointmentForm({ appointment, onSuccess }: AppointmentFormProps
   }
 
   // Filtrar clientes baseado no termo de busca
-  const filteredCustomers = customers.filter(customer => 
-    customer.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (customer.phone && customer.phone.includes(searchTerm))
+  const filteredCustomers = customers.filter(
+    customer =>
+      customer.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (customer.phone && customer.phone.includes(searchTerm))
   )
 
   const handleClientSelect = (client: Customer) => {
     setSelectedClient({
       id: client.id || '',
       name: client.full_name,
-      phone: client.phone || ''
+      phone: client.phone || '',
     })
     setIsSearching(false)
   }
@@ -297,20 +287,20 @@ export function AppointmentForm({ appointment, onSuccess }: AppointmentFormProps
   const formatPhoneNumber = (value: string) => {
     // Remove tudo que não for número
     const numbers = value.replace(/\D/g, '')
-    
+
     // Limita a 11 dígitos
     const limitedNumbers = numbers.slice(0, 11)
-    
+
     // Aplica a máscara (XX) XXXXX-XXXX
     if (limitedNumbers.length <= 11) {
       return limitedNumbers.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3')
     }
-    
+
     return value
   }
 
   return (
-    <Card className={cn("p-2", !appointment && "max-w-3xl mx-auto")}>
+    <Card className={cn('p-2', !appointment && 'max-w-3xl mx-auto')}>
       <div className="space-y-3">
         {/* Cabeçalho */}
         {!appointment && (
@@ -331,11 +321,11 @@ export function AppointmentForm({ appointment, onSuccess }: AppointmentFormProps
               <Label>Buscar Cliente</Label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input 
-                  placeholder="Digite o nome ou telefone..." 
+                <Input
+                  placeholder="Digite o nome ou telefone..."
                   className="pl-9"
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={e => setSearchTerm(e.target.value)}
                 />
               </div>
               {searchTerm.length > 0 && (
@@ -347,7 +337,7 @@ export function AppointmentForm({ appointment, onSuccess }: AppointmentFormProps
                       </p>
                     ) : (
                       <div className="space-y-2">
-                        {filteredCustomers.map((customer) => (
+                        {filteredCustomers.map(customer => (
                           <div
                             key={customer.id}
                             className="flex items-center justify-between p-2 hover:bg-accent rounded-lg cursor-pointer"
@@ -355,7 +345,9 @@ export function AppointmentForm({ appointment, onSuccess }: AppointmentFormProps
                           >
                             <div>
                               <p className="font-medium">{customer.full_name}</p>
-                              <p className="text-sm text-muted-foreground">{customer.phone || 'Sem telefone'}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {customer.phone || 'Sem telefone'}
+                              </p>
                             </div>
                           </div>
                         ))}
@@ -368,20 +360,20 @@ export function AppointmentForm({ appointment, onSuccess }: AppointmentFormProps
           ) : (
             <div className="space-y-2">
               <Label>Cliente</Label>
-              <Input 
-                placeholder="Nome do cliente" 
+              <Input
+                placeholder="Nome do cliente"
                 value={selectedClient ? selectedClient.name : newClient.name}
-                onChange={(e) => {
+                onChange={e => {
                   if (!selectedClient) {
                     setNewClient(prev => ({ ...prev, name: e.target.value }))
                   }
                 }}
                 readOnly={!!selectedClient}
               />
-              <Input 
-                placeholder="Telefone" 
+              <Input
+                placeholder="Telefone"
                 value={selectedClient ? selectedClient.phone : formatPhoneNumber(newClient.phone)}
-                onChange={(e) => {
+                onChange={e => {
                   if (!selectedClient) {
                     setNewClient(prev => ({ ...prev, phone: e.target.value }))
                   }
@@ -395,18 +387,18 @@ export function AppointmentForm({ appointment, onSuccess }: AppointmentFormProps
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Data</Label>
-              <Input 
-                type="date" 
+              <Input
+                type="date"
                 value={format(selectedDate, 'yyyy-MM-dd')}
                 onChange={handleDateChange}
               />
             </div>
             <div className="space-y-2">
               <Label>Hora</Label>
-              <Input 
-                type="time" 
+              <Input
+                type="time"
                 value={selectedTime}
-                onChange={(e) => {
+                onChange={e => {
                   const time = e.target.value
                   if (validateTime(time)) {
                     setSelectedTime(time)
@@ -425,11 +417,16 @@ export function AppointmentForm({ appointment, onSuccess }: AppointmentFormProps
               <Label>Serviço</Label>
               <Select
                 value={selectedService?.id}
-                onValueChange={(value) => {
+                onValueChange={value => {
                   const service = services.find(s => s.id === value)
                   setSelectedService(service || null)
                   if (service) {
-                    setDuration(service.duration)
+                    const durationInHours = Math.floor(service.duration / 60)
+                    const durationInMinutes = service.duration % 60
+                    const formattedDuration = `${durationInHours
+                      .toString()
+                      .padStart(2, '0')}:${durationInMinutes.toString().padStart(2, '0')}:00`
+                    setDuration(formattedDuration)
                   }
                 }}
               >
@@ -438,7 +435,7 @@ export function AppointmentForm({ appointment, onSuccess }: AppointmentFormProps
                 </SelectTrigger>
                 <SelectContent className="max-h-[200px]">
                   <ScrollArea className="max-h-[180px]">
-                    {services.map((service) => (
+                    {services.map(service => (
                       <SelectItem key={service.id} value={service.id!}>
                         {service.name}
                       </SelectItem>
@@ -450,10 +447,7 @@ export function AppointmentForm({ appointment, onSuccess }: AppointmentFormProps
 
             <div className="space-y-2">
               <Label>Duração</Label>
-              <Select
-                value={duration}
-                onValueChange={setDuration}
-              >
+              <Select value={duration} onValueChange={setDuration}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione a duração" />
                 </SelectTrigger>
@@ -470,33 +464,40 @@ export function AppointmentForm({ appointment, onSuccess }: AppointmentFormProps
           {/* Observações */}
           <div className="space-y-2">
             <Label>Observações</Label>
-            <Textarea 
-              placeholder="Adicione observações sobre o agendamento..." 
+            <Textarea
+              placeholder="Adicione observações sobre o agendamento..."
               value={notes}
-              onChange={(e) => setNotes(e.target.value)}
+              onChange={e => setNotes(e.target.value)}
             />
           </div>
 
           {/* Botões */}
           <div className="flex justify-end gap-2 pt-4">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               onClick={appointment ? () => onSuccess?.() : resetForm}
               disabled={isLoading}
             >
               Cancelar
             </Button>
-            <Button 
+            <Button
               onClick={handleSubmit}
-              disabled={isLoading || (!selectedClient && (!newClient.name || !newClient.phone)) || !selectedService || !selectedTime}
+              disabled={
+                isLoading ||
+                (!selectedClient && (!newClient.name || !newClient.phone)) ||
+                !selectedService ||
+                !selectedTime
+              }
             >
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Salvando...
                 </>
+              ) : appointment ? (
+                'Atualizar'
               ) : (
-                appointment ? 'Atualizar' : 'Salvar'
+                'Salvar'
               )}
             </Button>
           </div>
@@ -504,4 +505,4 @@ export function AppointmentForm({ appointment, onSuccess }: AppointmentFormProps
       </div>
     </Card>
   )
-} 
+}

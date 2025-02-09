@@ -1,9 +1,9 @@
-"use client"
+'use client'
 
 /**
  * @module DropdownMenu
  * @description Sistema de menus suspensos com suporte a múltiplos níveis e interações
- * 
+ *
  * @features
  * - Menus e submenus aninhados
  * - Itens de checkbox e radio
@@ -13,7 +13,7 @@
  * - Totalmente acessível (WCAG 2.1 AA)
  * - Otimizado para touch e gestos
  * - Suporte a reduced motion
- * 
+ *
  * @example
  * // Menu básico
  * <DropdownMenu>
@@ -25,7 +25,7 @@
  *     <DropdownMenuItem>Item 2</DropdownMenuItem>
  *   </DropdownMenuContent>
  * </DropdownMenu>
- * 
+ *
  * // Menu com submenu e grupos
  * <DropdownMenu>
  *   <DropdownMenuTrigger>Opções</DropdownMenuTrigger>
@@ -45,14 +45,14 @@
  * </DropdownMenu>
  */
 
-import * as React from "react"
-import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu"
-import { Check, ChevronRight, Circle } from "lucide-react"
-import { cn } from "@/lib/utils"
+import * as React from 'react'
+import * as DropdownMenuPrimitive from '@radix-ui/react-dropdown-menu'
+import { Check, ChevronRight, Circle } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 // Constantes para animações
-const ANIMATION_DURATION = "0.2s"
-const REDUCED_MOTION_DURATION = "0s"
+const ANIMATION_DURATION = '0.2s'
+const REDUCED_MOTION_DURATION = '0s'
 
 /**
  * Hook para detectar preferência de redução de movimento
@@ -61,12 +61,12 @@ const useReducedMotion = () => {
   const [prefersReducedMotion, setPrefersReducedMotion] = React.useState(false)
 
   React.useEffect(() => {
-    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)")
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
     setPrefersReducedMotion(mediaQuery.matches)
 
     const onChange = () => setPrefersReducedMotion(mediaQuery.matches)
-    mediaQuery.addEventListener("change", onChange)
-    return () => mediaQuery.removeEventListener("change", onChange)
+    mediaQuery.addEventListener('change', onChange)
+    return () => mediaQuery.removeEventListener('change', onChange)
   }, [])
 
   return prefersReducedMotion
@@ -122,13 +122,13 @@ const DropdownMenuSubTrigger = React.forwardRef<
     ref={ref}
     className={cn(
       // Base
-      "flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none",
+      'flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none',
       // Cores e Estados
-      "text-text-primary",
-      "focus:bg-hover-medium",
-      "data-[state=open]:bg-hover-medium",
+      'text-text-primary',
+      'focus:bg-hover-medium',
+      'data-[state=open]:bg-hover-medium',
       // Inset
-      inset && "pl-8",
+      inset && 'pl-8',
       className
     )}
     {...props}
@@ -151,21 +151,21 @@ const DropdownMenuSubContent = React.forwardRef<
     ref={ref}
     className={cn(
       // Base
-      "z-50 min-w-[8rem] overflow-hidden rounded-md p-1",
+      'z-50 min-w-[8rem] overflow-hidden rounded-md p-1',
       // Cores e Sombras
-      "bg-white",
-      "border border-charcoal/10",
-      "shadow-lg shadow-charcoal/5",
+      'bg-white',
+      'border border-charcoal/10',
+      'shadow-lg shadow-charcoal/5',
       // Texto
-      "text-text-primary",
+      'text-text-primary',
       // Animações
-      "data-[state=open]:animate-in data-[state=closed]:animate-out",
-      "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-      "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
-      "data-[side=bottom]:slide-in-from-top-2",
-      "data-[side=left]:slide-in-from-right-2",
-      "data-[side=right]:slide-in-from-left-2",
-      "data-[side=top]:slide-in-from-bottom-2",
+      'data-[state=open]:animate-in data-[state=closed]:animate-out',
+      'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
+      'data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
+      'data-[side=bottom]:slide-in-from-top-2',
+      'data-[side=left]:slide-in-from-right-2',
+      'data-[side=right]:slide-in-from-left-2',
+      'data-[side=top]:slide-in-from-bottom-2',
       className
     )}
     {...props}
@@ -182,7 +182,7 @@ const DropdownMenuContent = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
 >(({ className, sideOffset = 4, ...props }, ref) => {
   const prefersReducedMotion = useReducedMotion()
-  
+
   return (
     <DropdownMenuPrimitive.Portal>
       <DropdownMenuPrimitive.Content
@@ -190,34 +190,38 @@ const DropdownMenuContent = React.forwardRef<
         sideOffset={sideOffset}
         className={cn(
           // Base
-          "z-50 min-w-[8rem] overflow-hidden rounded-md p-1",
+          'z-50 min-w-[8rem] overflow-hidden rounded-md p-1',
           // Cores e Sombras
-          "bg-white",
-          "border border-charcoal/10",
-          "shadow-lg shadow-charcoal/5",
+          'bg-white',
+          'border border-charcoal/10',
+          'shadow-lg shadow-charcoal/5',
           // Texto
-          "text-text-primary",
+          'text-text-primary',
           // Animações (condicionais baseadas em reduced motion)
           !prefersReducedMotion && [
-            "data-[state=open]:animate-in data-[state=closed]:animate-out",
-            "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0",
-            "data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95",
-            "data-[side=bottom]:slide-in-from-top-2",
-            "data-[side=left]:slide-in-from-right-2",
-            "data-[side=right]:slide-in-from-left-2",
-            "data-[side=top]:slide-in-from-bottom-2",
+            'data-[state=open]:animate-in data-[state=closed]:animate-out',
+            'data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0',
+            'data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95',
+            'data-[side=bottom]:slide-in-from-top-2',
+            'data-[side=left]:slide-in-from-right-2',
+            'data-[side=right]:slide-in-from-left-2',
+            'data-[side=top]:slide-in-from-bottom-2',
           ],
           // Touch e Gestos
-          "touch-manipulation",
-          "active:scale-[0.98]",
+          'touch-manipulation',
+          'active:scale-[0.98]',
           className
         )}
         // Acessibilidade
         aria-orientation="vertical"
         role="menu"
-        style={{
-          '--animation-duration': prefersReducedMotion ? REDUCED_MOTION_DURATION : ANIMATION_DURATION
-        } as React.CSSProperties}
+        style={
+          {
+            '--animation-duration': prefersReducedMotion
+              ? REDUCED_MOTION_DURATION
+              : ANIMATION_DURATION,
+          } as React.CSSProperties
+        }
         {...props}
       />
     </DropdownMenuPrimitive.Portal>
@@ -239,16 +243,16 @@ const DropdownMenuItem = React.forwardRef<
     ref={ref}
     className={cn(
       // Base
-      "relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none",
+      'relative flex cursor-default select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none',
       // Cores e Estados
-      "text-text-primary",
-      "focus:bg-hover-medium",
-      "data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      'text-text-primary',
+      'focus:bg-hover-medium',
+      'data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
       // Touch e Gestos
-      "touch-manipulation",
-      "active:scale-[0.98]",
+      'touch-manipulation',
+      'active:scale-[0.98]',
       // Inset
-      inset && "pl-8",
+      inset && 'pl-8',
       className
     )}
     // Acessibilidade
@@ -270,11 +274,11 @@ const DropdownMenuCheckboxItem = React.forwardRef<
     ref={ref}
     className={cn(
       // Base
-      "relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none",
+      'relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none',
       // Cores e Estados
-      "text-text-primary",
-      "focus:bg-hover-medium",
-      "data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      'text-text-primary',
+      'focus:bg-hover-medium',
+      'data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
       className
     )}
     checked={checked}
@@ -302,11 +306,11 @@ const DropdownMenuRadioItem = React.forwardRef<
     ref={ref}
     className={cn(
       // Base
-      "relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none",
+      'relative flex cursor-default select-none items-center rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none',
       // Cores e Estados
-      "text-text-primary",
-      "focus:bg-hover-medium",
-      "data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      'text-text-primary',
+      'focus:bg-hover-medium',
+      'data-[disabled]:pointer-events-none data-[disabled]:opacity-50',
       className
     )}
     {...props}
@@ -334,8 +338,8 @@ const DropdownMenuLabel = React.forwardRef<
   <DropdownMenuPrimitive.Label
     ref={ref}
     className={cn(
-      "px-2 py-1.5 text-sm font-semibold text-text-primary",
-      inset && "pl-8",
+      'px-2 py-1.5 text-sm font-semibold text-text-primary',
+      inset && 'pl-8',
       className
     )}
     {...props}
@@ -353,7 +357,7 @@ const DropdownMenuSeparator = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <DropdownMenuPrimitive.Separator
     ref={ref}
-    className={cn("-mx-1 my-1 h-px bg-charcoal/10", className)}
+    className={cn('-mx-1 my-1 h-px bg-charcoal/10', className)}
     {...props}
   />
 ))
@@ -363,21 +367,15 @@ DropdownMenuSeparator.displayName = DropdownMenuPrimitive.Separator.displayName
  * @component DropdownMenuShortcut
  * @description Texto para exibir atalhos de teclado
  */
-const DropdownMenuShortcut = ({
-  className,
-  ...props
-}: React.HTMLAttributes<HTMLSpanElement>) => {
+const DropdownMenuShortcut = ({ className, ...props }: React.HTMLAttributes<HTMLSpanElement>) => {
   return (
     <span
-      className={cn(
-        "ml-auto text-xs tracking-widest text-text-secondary",
-        className
-      )}
+      className={cn('ml-auto text-xs tracking-widest text-text-secondary', className)}
       {...props}
     />
   )
 }
-DropdownMenuShortcut.displayName = "DropdownMenuShortcut"
+DropdownMenuShortcut.displayName = 'DropdownMenuShortcut'
 
 export {
   DropdownMenu,
@@ -395,4 +393,4 @@ export {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuRadioGroup,
-} 
+}

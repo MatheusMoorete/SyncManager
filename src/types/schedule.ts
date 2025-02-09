@@ -1,12 +1,12 @@
-import { z } from "zod"
+import { z } from 'zod'
 
 // Schema para validação do formulário de agendamento
 export const appointmentFormSchema = z.object({
-  client_id: z.string().min(1, "Cliente é obrigatório"),
-  service_id: z.string().min(1, "Serviço é obrigatório"),
-  scheduled_time: z.string().min(1, "Data e hora são obrigatórios"),
+  client_id: z.string().min(1, 'Cliente é obrigatório'),
+  service_id: z.string().min(1, 'Serviço é obrigatório'),
+  scheduled_time: z.string().min(1, 'Data e hora são obrigatórios'),
   actual_duration: z.string().optional(),
-  final_price: z.number().min(0, "Preço deve ser maior ou igual a 0"),
+  final_price: z.number().min(0, 'Preço deve ser maior ou igual a 0'),
   discount: z.number().min(0).max(1).optional(), // 0-1 representando %
   status: z.enum(['scheduled', 'completed', 'canceled', 'no_show']).default('scheduled'),
   notes: z.string().optional(),
@@ -77,12 +77,12 @@ export type AppointmentNotification = {
 }
 
 export interface BusinessHoursConfig {
-  starttime: string; // formato HH:mm
-  endtime: string; // formato HH:mm
-  daysoff: number[]; // 0 = domingo, 1 = segunda, etc
+  starttime: string // formato HH:mm
+  endtime: string // formato HH:mm
+  daysoff: number[] // 0 = domingo, 1 = segunda, etc
   lunchbreak?: {
-    start: string; // formato HH:mm
-    end: string; // formato HH:mm
-  };
-  owner_id: string;
-} 
+    start: string // formato HH:mm
+    end: string // formato HH:mm
+  }
+  ownerId: string
+}

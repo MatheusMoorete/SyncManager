@@ -1,29 +1,43 @@
 import { create } from 'zustand'
-import { createClient } from '@/lib/supabase/client'
+import { db } from '@/lib/firebase'
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  orderBy,
+  Timestamp,
+} from 'firebase/firestore'
+import { useAuthStore } from './auth-store'
+import { toast } from 'sonner'
 
 export interface Transaction {
   id: string
-  owner_id: string
-  client_id: string | null
+  ownerId: string
+  clientId: string | null
   type: 'income' | 'expense'
   category: string
   amount: number
-  payment_method: 'cash' | 'credit_card' | 'debit_card' | 'pix' | null
-  receipt_url: string | null
-  transaction_date: string
-  notes: string | null | undefined
-  created_at: string
+  paymentMethod: 'cash' | 'credit_card' | 'debit_card' | 'pix' | null
+  receiptUrl: string | null
+  transactionDate: Timestamp
+  notes: string | null
+  createdAt: Timestamp
 }
 
 interface Expense {
   id: string
-  owner_id: string
+  ownerId: string
   name: string
   category: string
   amount: number
   frequency: 'daily' | 'weekly' | 'monthly' | 'yearly' | 'once' | null
-  next_payment_date: string | null
-  created_at: string
+  nextPaymentDate: Timestamp | null
+  createdAt: Timestamp
 }
 
 interface FinanceStats {
@@ -39,69 +53,83 @@ interface FinanceStore {
   transactions: Transaction[]
   expenses: Expense[]
   stats: FinanceStats | null
-  isLoading: boolean
+  loading: boolean
   error: string | null
   actions: {
     fetchTransactions: () => Promise<void>
     fetchExpenses: () => Promise<void>
     calculateStats: () => Promise<void>
     addTransaction: (
-      transaction: Omit<Transaction, 'id' | 'created_at' | 'owner_id'>
+      transaction: Omit<Transaction, 'id' | 'createdAt' | 'ownerId'>
     ) => Promise<void>
-    addExpense: (expense: Omit<Expense, 'id' | 'created_at'>) => Promise<void>
+    addExpense: (expense: Omit<Expense, 'id' | 'createdAt' | 'ownerId'>) => Promise<void>
     deleteTransaction: (id: string) => Promise<void>
     deleteExpense: (id: string) => Promise<void>
     updateTransaction: (
       id: string,
-      transaction: Omit<Transaction, 'id' | 'created_at' | 'owner_id'>
+      transaction: Omit<Transaction, 'id' | 'createdAt' | 'ownerId'>
     ) => Promise<void>
   }
 }
-
-const supabase = createClient()
 
 export const useFinanceStore = create<FinanceStore>((set, get) => ({
   transactions: [],
   expenses: [],
   stats: null,
-  isLoading: false,
+  loading: false,
   error: null,
   actions: {
     fetchTransactions: async () => {
-      set({ isLoading: true, error: null })
+      const { user } = useAuthStore.getState()
+      if (!user) throw new Error('Usuário não autenticado')
+
+      set({ loading: true, error: null })
       try {
-        const { data, error } = await supabase
-          .from('transactions')
-          .select('*')
-          .order('transaction_date', { ascending: false })
+        const q = query(
+          collection(db, 'transactions'),
+          where('ownerId', '==', user.uid),
+          orderBy('transactionDate', 'desc')
+        )
 
-        if (error) throw error
+        const snapshot = await getDocs(q)
+        const transactions = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as Transaction[]
 
-        set({ transactions: data })
+        set({ transactions })
         await get().actions.calculateStats()
       } catch (error) {
-        set({ error: (error as Error).message })
+        set({ error: error instanceof Error ? error.message : 'Erro desconhecido' })
       } finally {
-        set({ isLoading: false })
+        set({ loading: false })
       }
     },
 
     fetchExpenses: async () => {
-      set({ isLoading: true, error: null })
+      const { user } = useAuthStore.getState()
+      if (!user) throw new Error('Usuário não autenticado')
+
+      set({ loading: true, error: null })
       try {
-        const { data, error } = await supabase
-          .from('expenses')
-          .select('*')
-          .order('created_at', { ascending: false })
+        const q = query(
+          collection(db, 'expenses'),
+          where('ownerId', '==', user.uid),
+          orderBy('createdAt', 'desc')
+        )
 
-        if (error) throw error
+        const snapshot = await getDocs(q)
+        const expenses = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as Expense[]
 
-        set({ expenses: data })
+        set({ expenses })
         await get().actions.calculateStats()
       } catch (error) {
-        set({ error: (error as Error).message })
+        set({ error: error instanceof Error ? error.message : 'Erro desconhecido' })
       } finally {
-        set({ isLoading: false })
+        set({ loading: false })
       }
     },
 
@@ -113,7 +141,7 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
 
       // Filtrar transações do mês atual
       const monthTransactions = transactions.filter(t => {
-        const transactionDate = new Date(t.transaction_date)
+        const transactionDate = t.transactionDate.toDate()
         return transactionDate >= firstDayOfMonth && transactionDate <= lastDayOfMonth
       })
 
@@ -151,14 +179,14 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
           return acc
         }, [] as { category: string; total: number }[])
 
-      // Nova lógica de projeção mensal
+      // Projeção mensal
       const calculateMonthlyProjection = () => {
         const threeMonthsAgo = new Date()
         threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3)
 
         // Agrupa transações por mês
         const monthlyTransactions = transactions.reduce((acc, t) => {
-          const date = new Date(t.transaction_date)
+          const date = t.transactionDate.toDate()
           const monthKey = `${date.getFullYear()}-${date.getMonth()}`
 
           if (!acc[monthKey]) {
@@ -185,30 +213,19 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
           (a, b) => b.date.getTime() - a.date.getTime()
         )
 
-        // Se não tiver dados suficientes
-        if (months.length === 0) {
-          return 0
-        }
-
-        if (months.length === 1) {
-          // Com apenas 1 mês, projeta baseado no mês atual
-          return months[0].netProfit
-        }
-
+        if (months.length === 0) return 0
+        if (months.length === 1) return months[0].netProfit
         if (months.length === 2) {
-          // Com 2 meses, faz uma média simples
-          const average = months.reduce((sum, month) => sum + month.netProfit, 0) / months.length
-          return average
+          return months.reduce((sum, month) => sum + month.netProfit, 0) / months.length
         }
 
         // Com 3 ou mais meses, calcula tendência com média ponderada
         const recentMonths = months.slice(0, 3)
-        const weightedAverage =
+        return (
           recentMonths[0].netProfit * 0.5 + // Mês mais recente: peso 50%
           recentMonths[1].netProfit * 0.3 + // Mês anterior: peso 30%
           recentMonths[2].netProfit * 0.2 // Mês mais antigo: peso 20%
-
-        return weightedAverage
+        )
       }
 
       const monthlyProjection = calculateMonthlyProjection()
@@ -226,143 +243,138 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
     },
 
     addTransaction: async transaction => {
-      set({ isLoading: true, error: null })
+      const { user } = useAuthStore.getState()
+      if (!user) throw new Error('Usuário não autenticado')
+
+      set({ loading: true, error: null })
       try {
-        const {
-          data: { user },
-        } = await supabase.auth.getUser()
-        if (!user) throw new Error('Usuário não autenticado')
+        const now = Timestamp.now()
+        const newTransaction = {
+          ...transaction,
+          ownerId: user.uid,
+          createdAt: now,
+        }
 
-        console.log('Data recebida na store:', transaction.transaction_date)
+        const docRef = await addDoc(collection(db, 'transactions'), newTransaction)
+        const addedTransaction = { id: docRef.id, ...newTransaction }
 
-        const { data, error } = await supabase
-          .from('transactions')
-          .insert([
-            {
-              ...transaction,
-              owner_id: user.id,
-              created_at: new Date().toISOString(),
-            },
-          ])
-          .select('*')
-          .single()
-
-        if (error) throw error
-
-        console.log('Data retornada do Supabase:', data.transaction_date)
-
-        // Atualiza o estado de forma otimista
         set(state => ({
-          transactions: [data, ...state.transactions],
-          stats: {
-            ...state.stats!,
-            totalIncome:
-              transaction.type === 'income'
-                ? state.stats!.totalIncome + transaction.amount
-                : state.stats!.totalIncome,
-            totalExpenses:
-              transaction.type === 'expense'
-                ? state.stats!.totalExpenses + transaction.amount
-                : state.stats!.totalExpenses,
-            netProfit:
-              transaction.type === 'income'
-                ? state.stats!.netProfit + transaction.amount
-                : state.stats!.netProfit - transaction.amount,
-          },
+          transactions: [addedTransaction, ...state.transactions],
         }))
 
-        // Atualiza as estatísticas em segundo plano
-        get().actions.calculateStats()
+        await get().actions.calculateStats()
+        toast.success('Transação adicionada com sucesso!')
       } catch (error) {
-        set({ error: (error as Error).message })
+        console.error('Erro ao adicionar transação:', error)
+        toast.error('Erro ao adicionar transação')
+        throw error
       } finally {
-        set({ isLoading: false })
+        set({ loading: false })
       }
     },
 
     addExpense: async expense => {
-      set({ isLoading: true, error: null })
-      try {
-        const { data, error } = await supabase.from('expenses').insert([expense]).select()
+      const { user } = useAuthStore.getState()
+      if (!user) throw new Error('Usuário não autenticado')
 
-        if (error) throw error
+      set({ loading: true, error: null })
+      try {
+        const now = Timestamp.now()
+        const newExpense = {
+          ...expense,
+          ownerId: user.uid,
+          createdAt: now,
+        }
+
+        const docRef = await addDoc(collection(db, 'expenses'), newExpense)
+        const addedExpense = { id: docRef.id, ...newExpense }
 
         set(state => ({
-          expenses: [...state.expenses, data[0]],
+          expenses: [addedExpense, ...state.expenses],
         }))
+
         await get().actions.calculateStats()
+        toast.success('Despesa adicionada com sucesso!')
       } catch (error) {
-        set({ error: (error as Error).message })
+        console.error('Erro ao adicionar despesa:', error)
+        toast.error('Erro ao adicionar despesa')
+        throw error
       } finally {
-        set({ isLoading: false })
+        set({ loading: false })
       }
     },
 
-    updateTransaction: async (
-      id: string,
-      transaction: Omit<Transaction, 'id' | 'created_at' | 'owner_id'>
-    ) => {
-      set({ isLoading: true, error: null })
+    updateTransaction: async (id, transaction) => {
+      const { user } = useAuthStore.getState()
+      if (!user) throw new Error('Usuário não autenticado')
+
+      set({ loading: true, error: null })
       try {
-        const { data, error } = await supabase
-          .from('transactions')
-          .update({
-            ...transaction,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', id)
-          .select('*')
-          .single()
+        const updateData = {
+          ...transaction,
+          updatedAt: Timestamp.now(),
+        }
 
-        if (error) throw error
+        await updateDoc(doc(db, 'transactions', id), updateData)
 
-        // Atualiza o estado otimisticamente
         set(state => ({
-          transactions: state.transactions.map(t => (t.id === id ? data : t)),
+          transactions: state.transactions.map(t => (t.id === id ? { ...t, ...updateData } : t)),
         }))
 
-        // Atualiza as estatísticas em segundo plano
         await get().actions.calculateStats()
+        toast.success('Transação atualizada com sucesso!')
       } catch (error) {
-        set({ error: (error as Error).message })
+        console.error('Erro ao atualizar transação:', error)
+        toast.error('Erro ao atualizar transação')
+        throw error
       } finally {
-        set({ isLoading: false })
+        set({ loading: false })
       }
     },
 
     deleteTransaction: async id => {
-      set({ isLoading: true, error: null })
-      try {
-        const { error } = await supabase.from('transactions').delete().eq('id', id)
+      const { user } = useAuthStore.getState()
+      if (!user) throw new Error('Usuário não autenticado')
 
-        if (error) throw error
+      set({ loading: true, error: null })
+      try {
+        await deleteDoc(doc(db, 'transactions', id))
 
         set(state => ({
           transactions: state.transactions.filter(t => t.id !== id),
         }))
+
         await get().actions.calculateStats()
+        toast.success('Transação excluída com sucesso!')
       } catch (error) {
-        set({ error: (error as Error).message })
+        console.error('Erro ao excluir transação:', error)
+        toast.error('Erro ao excluir transação')
+        throw error
       } finally {
-        set({ isLoading: false })
+        set({ loading: false })
       }
     },
 
     deleteExpense: async id => {
-      set({ isLoading: true, error: null })
-      try {
-        const { error } = await supabase.from('expenses').delete().eq('id', id)
+      const { user } = useAuthStore.getState()
+      if (!user) throw new Error('Usuário não autenticado')
 
-        if (error) throw error
+      set({ loading: true, error: null })
+      try {
+        await deleteDoc(doc(db, 'expenses', id))
 
         set(state => ({
           expenses: state.expenses.filter(e => e.id !== id),
         }))
+
         await get().actions.calculateStats()
+        toast.success('Despesa excluída com sucesso!')
       } catch (error) {
-        set({ error: (error as Error).message })
+        console.error('Erro ao excluir despesa:', error)
+        toast.error('Erro ao excluir despesa')
+        throw error
       } finally {
-        set({ isLoading: false })
+        set({ loading: false })
       }
     },
   },

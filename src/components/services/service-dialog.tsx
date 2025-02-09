@@ -1,16 +1,17 @@
 'use client'
 
-import { ReactNode, useState } from "react"
-import { Button } from "@/components/ui/button"
+import { ReactNode, useState } from 'react'
+import { Button } from '@/components/ui/button'
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { ServiceForm } from "./service-form"
-import { ServiceFormValues } from "@/types/service"
+  DialogDescription,
+} from '@/components/ui/dialog'
+import { ServiceForm } from './service-form'
+import { ServiceFormValues } from '@/types/service'
 
 interface ServiceDialogProps {
   trigger: ReactNode
@@ -22,10 +23,10 @@ interface ServiceDialogProps {
 
 export function ServiceDialog({
   trigger,
-  title = "Novo Serviço",
+  title = 'Novo Serviço',
   initialData,
   onSubmit,
-  isLoading
+  isLoading,
 }: ServiceDialogProps) {
   const [open, setOpen] = useState(false)
 
@@ -41,22 +42,18 @@ export function ServiceDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger}
-      </DialogTrigger>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
       <DialogContent>
         <DialogHeader>
           <DialogTitle className="font-heading text-heading">{title}</DialogTitle>
-          <p className="text-sm text-muted-foreground">
-            {initialData ? "Atualize os dados do serviço" : "Adicione um novo serviço ao seu catálogo"}
-          </p>
+          <DialogDescription>
+            {initialData
+              ? 'Atualize os dados do serviço'
+              : 'Adicione um novo serviço ao seu catálogo'}
+          </DialogDescription>
         </DialogHeader>
-        <ServiceForm
-          initialData={initialData}
-          onSubmit={handleSubmit}
-          isLoading={isLoading}
-        />
+        <ServiceForm initialData={initialData} onSubmit={handleSubmit} isLoading={isLoading} />
       </DialogContent>
     </Dialog>
   )
-} 
+}

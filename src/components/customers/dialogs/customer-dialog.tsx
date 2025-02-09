@@ -1,13 +1,14 @@
-import { ReactNode } from "react"
+import { ReactNode } from 'react'
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { CustomerForm } from "../forms/customer-form"
-import { CustomerFormValues } from "@/types/customer"
+  DialogDescription,
+} from '@/components/ui/dialog'
+import { CustomerForm } from '../forms/customer-form'
+import { CustomerFormValues } from '@/types/customer'
 
 export interface CustomerDialogProps {
   trigger: ReactNode
@@ -19,29 +20,23 @@ export interface CustomerDialogProps {
 
 export function CustomerDialog({
   trigger,
-  title = "Novo Cliente",
+  title = 'Novo Cliente',
   initialData,
   onSubmit,
-  isLoading
+  isLoading,
 }: CustomerDialogProps) {
   return (
     <Dialog>
-      <DialogTrigger asChild>
-        {trigger}
-      </DialogTrigger>
-      <DialogContent className="max-w-[500px]">
-        <DialogHeader>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogContent className="max-w-[500px] max-h-[90vh] overflow-y-auto">
+        <DialogHeader className="sticky top-0 bg-white pb-4 z-10">
           <DialogTitle className="font-heading text-heading">{title}</DialogTitle>
-          <p className="text-sm text-muted-foreground">
+          <DialogDescription>
             {initialData ? 'Edite os dados do cliente' : 'Adicione um novo cliente ao seu cadastro'}
-          </p>
+          </DialogDescription>
         </DialogHeader>
-        <CustomerForm
-          initialData={initialData}
-          onSubmit={onSubmit}
-          isLoading={isLoading}
-        />
+        <CustomerForm initialData={initialData} onSubmit={onSubmit} isLoading={isLoading} />
       </DialogContent>
     </Dialog>
   )
-} 
+}

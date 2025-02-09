@@ -1,12 +1,13 @@
-import { z } from "zod"
+import { z } from 'zod'
+import { Timestamp } from 'firebase/firestore'
 
 // Schema para validação do formulário
 export const serviceFormSchema = z.object({
-  name: z.string().min(1, "Nome é obrigatório"),
+  name: z.string().min(1, 'Nome é obrigatório'),
   description: z.string().optional(),
-  base_price: z.number().min(0, "Preço deve ser maior ou igual a 0"),
-  duration: z.string().default("01:00:00"),
-  is_active: z.boolean().default(true),
+  price: z.number().min(0, 'Preço deve ser maior ou igual a 0'),
+  duration: z.number().min(1, 'Duração deve ser maior que 0'),
+  active: z.boolean().default(true),
 })
 
 // Tipo para os valores do formulário
@@ -15,20 +16,21 @@ export type ServiceFormValues = z.infer<typeof serviceFormSchema>
 // Tipo para o serviço completo (incluindo campos do banco de dados)
 export type Service = {
   id: string
-  owner_id: string
+  ownerId: string
   name: string
   description: string | null
-  base_price: number
-  duration: string
-  is_active: boolean
-  created_at: string
-  updated_at: string
+  price: number
+  duration: number // duração em minutos
+  active: boolean
+  createdAt: Timestamp
+  updatedAt: Timestamp
 }
 
 // Interface para filtros de serviço
 export interface ServiceFilters {
-  search: string
-  sortBy: 'name' | 'base_price' | 'recent'
-  sortOrder: 'asc' | 'desc'
-  isActive?: boolean
-} 
+  search?: string
+  sortBy?: 'name' | 'price' | 'duration' | 'createdAt'
+  sortOrder?: 'asc' | 'desc'
+  onlyActive?: boolean
+  perPage?: number
+}

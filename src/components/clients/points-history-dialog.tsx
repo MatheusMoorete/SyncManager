@@ -12,8 +12,9 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { createClient } from '@/lib/supabase/client'
 import { Loader2 } from 'lucide-react'
+import { db } from '@/lib/firebase'
+import { collection, query, where, orderBy, getDocs } from 'firebase/firestore'
 
 interface PointsHistoryEntry {
   id: string
@@ -32,20 +33,25 @@ interface PointsHistoryDialogProps {
 export function PointsHistoryDialog({ clientId, clientName, trigger }: PointsHistoryDialogProps) {
   const [history, setHistory] = useState<PointsHistoryEntry[]>([])
   const [isLoading, setIsLoading] = useState(false)
-  const supabase = createClient()
 
   const fetchHistory = async () => {
     try {
       setIsLoading(true)
-      const { data, error } = await supabase
-        .from('points_history')
-        .select('*')
-        .eq('client_id', clientId)
-        .order('created_at', { ascending: false })
 
-      if (error) throw error
+      const pointsHistoryRef = collection(db, 'points_history')
+      const q = query(
+        pointsHistoryRef,
+        where('clientId', '==', clientId),
+        orderBy('created_at', 'desc')
+      )
 
-      setHistory(data)
+      const snapshot = await getDocs(q)
+      const historyData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+      })) as PointsHistoryEntry[]
+
+      setHistory(historyData)
     } catch (error) {
       console.error('Error fetching points history:', error)
     } finally {

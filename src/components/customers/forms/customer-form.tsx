@@ -1,14 +1,13 @@
 'use client'
 
-import { useForm } from "react-hook-form"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { Loader2 } from "lucide-react"
-import { parse, isValid, format } from "date-fns"
-import { toast } from "sonner"
-import { DialogClose } from "@/components/ui/dialog"
-import { useRef } from "react"
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
+import { DialogClose } from '@/components/ui/dialog'
+import { useRef } from 'react'
 
-import { Button } from "@/components/ui/button"
+import { Button } from '@/components/ui/button'
 import {
   Form,
   FormControl,
@@ -16,10 +15,11 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { CustomerFormValues, customerFormSchema } from "@/types/customer"
+  FormDescription,
+} from '@/components/ui/form'
+import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { CustomerFormValues, customerFormSchema } from '@/types/customer'
 
 export interface CustomerFormProps {
   initialData?: Partial<CustomerFormValues>
@@ -27,26 +27,29 @@ export interface CustomerFormProps {
   isLoading?: boolean
 }
 
-export function CustomerForm({
-  initialData,
-  onSubmit,
-  isLoading
-}: CustomerFormProps) {
+export function CustomerForm({ initialData, onSubmit, isLoading }: CustomerFormProps) {
   const closeButtonRef = useRef<HTMLButtonElement>(null)
   const form = useForm<CustomerFormValues>({
     resolver: zodResolver(customerFormSchema),
     defaultValues: {
-      name: initialData?.name || '',
+      fullName: initialData?.fullName || '',
       phone: initialData?.phone || '',
       email: initialData?.email || '',
       birthDate: initialData?.birthDate || '',
       notes: initialData?.notes || '',
-    }
+    },
   })
 
   const handleSubmit = async (data: CustomerFormValues) => {
     try {
-      await onSubmit(data)
+      // Converte strings vazias para null antes de enviar
+      const formattedData = {
+        ...data,
+        email: data.email || null,
+        birthDate: data.birthDate || null,
+        notes: data.notes || null,
+      }
+      await onSubmit(formattedData)
       form.reset()
       closeButtonRef.current?.click()
     } catch (error) {
@@ -58,21 +61,27 @@ export function CustomerForm({
   const formatPhoneNumber = (value: string) => {
     // Remove tudo que não for número
     const numbers = value.replace(/\D/g, '')
-    
+
+    // Limita a 11 dígitos
+    const limitedNumbers = numbers.slice(0, 11)
+
     // Aplica a máscara (XX) XXXXX-XXXX
-    if (numbers.length <= 11) {
-      return numbers.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3')
+    if (limitedNumbers.length <= 11) {
+      return limitedNumbers.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3')
     }
-    
+
     return value
   }
 
   const formatDate = (value: string) => {
     // Remove tudo que não for número
     const numbers = value.replace(/\D/g, '')
-    
+
+    // Limita a 8 dígitos
+    const limitedNumbers = numbers.slice(0, 8)
+
     // Aplica a máscara DD/MM/YYYY
-    return numbers.replace(/(\d{2})(\d{2})(\d{4})/, '$1/$2/$3')
+    return limitedNumbers.replace(/(\d{2})(\d{2})(\d{4})/, '$1/$2/$3')
   }
 
   return (
@@ -80,7 +89,7 @@ export function CustomerForm({
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
         <FormField
           control={form.control}
-          name="name"
+          name="fullName"
           render={({ field }) => (
             <FormItem>
               <FormLabel>
@@ -88,74 +97,85 @@ export function CustomerForm({
                 <span className="text-red-500 ml-1">*</span>
               </FormLabel>
               <FormControl>
-                <Input {...field} />
+                <Input {...field} placeholder="Digite o nome completo" />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
 
-        <FormField
-          control={form.control}
-          name="phone"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>
-                Telefone
-                <span className="text-red-500 ml-1">*</span>
-              </FormLabel>
-              <FormControl>
-                <Input
-                  {...field}
-                  onChange={(e) => {
-                    const formatted = formatPhoneNumber(e.target.value)
-                    field.onChange(formatted)
-                  }}
-                  maxLength={15}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="email"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>E-mail</FormLabel>
-              <FormControl>
-                <Input {...field} type="email" />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="birthDate"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Data de nascimento</FormLabel>
-              <FormControl>
-                <Input
-                  {...field}
-                  onChange={(e) => {
-                    const formatted = formatDate(e.target.value)
-                    if (formatted.length <= 10) {
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="phone"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>
+                  Telefone
+                  <span className="text-red-500 ml-1">*</span>
+                </FormLabel>
+                <FormControl>
+                  <Input
+                    {...field}
+                    placeholder="(99) 99999-9999"
+                    onChange={e => {
+                      const formatted = formatPhoneNumber(e.target.value)
                       field.onChange(formatted)
-                    }
-                  }}
-                  maxLength={10}
-                  placeholder="DD/MM/AAAA"
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+                    }}
+                    maxLength={15}
+                  />
+                </FormControl>
+                <FormDescription className="text-xs">Digite apenas os números</FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="email"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>E-mail</FormLabel>
+                <FormControl>
+                  <Input
+                    {...field}
+                    type="email"
+                    placeholder="email@exemplo.com"
+                    value={field.value || ''}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <FormField
+            control={form.control}
+            name="birthDate"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Data de nascimento</FormLabel>
+                <FormControl>
+                  <Input
+                    {...field}
+                    placeholder="DD/MM/AAAA"
+                    onChange={e => {
+                      const formatted = formatDate(e.target.value)
+                      field.onChange(formatted)
+                    }}
+                    maxLength={10}
+                    value={field.value || ''}
+                  />
+                </FormControl>
+                <FormDescription className="text-xs">Digite apenas os números</FormDescription>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+        </div>
 
         <FormField
           control={form.control}
@@ -164,19 +184,26 @@ export function CustomerForm({
             <FormItem>
               <FormLabel>Observações</FormLabel>
               <FormControl>
-                <Textarea {...field} />
+                <Textarea
+                  {...field}
+                  placeholder="Adicione observações relevantes sobre o cliente"
+                  value={field.value || ''}
+                  className="h-20"
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
 
-        <div className="flex justify-end gap-4">
+        <div className="flex justify-end gap-4 pt-4">
           <DialogClose ref={closeButtonRef} asChild>
-            <Button type="button" variant="outline">Cancelar</Button>
+            <Button type="button" variant="outline">
+              Cancelar
+            </Button>
           </DialogClose>
-          <Button 
-            type="submit" 
+          <Button
+            type="submit"
             disabled={isLoading}
             className="bg-terracotta hover:bg-terracotta/90 text-white"
           >
@@ -193,4 +220,4 @@ export function CustomerForm({
       </form>
     </Form>
   )
-} 
+}

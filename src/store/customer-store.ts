@@ -5,9 +5,24 @@
 
 import { create } from 'zustand'
 import { toast } from 'sonner'
-import { supabase } from '@/lib/supabase/index'
+import { db } from '@/lib/firebase'
 import { Customer, CustomerFormValues, CustomerFilters } from '@/types/customer'
-import { PostgrestError } from '@supabase/supabase-js'
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  orderBy,
+  startAfter,
+  limit,
+  Timestamp,
+  getDoc,
+} from 'firebase/firestore'
+import { useAuthStore } from '@/store/auth-store'
 
 /**
  * @interface DatabaseCustomer
@@ -20,11 +35,12 @@ interface DatabaseCustomer {
   email: string | null
   birth_date: string | null
   notes: string | null
-  created_at: string
-  updated_at: string
-  loyalty_points: {
-    points_earned: number
-  } | null
+  createdAt: Timestamp
+  updatedAt: Timestamp
+  points: number
+  active: boolean
+  ownerId: string
+  deletedAt?: Timestamp | null
 }
 
 /**
@@ -32,9 +48,9 @@ interface DatabaseCustomer {
  * @description Estrutura de erro customizada para operações com clientes
  */
 interface CustomerError extends Error {
-  code?: string;
-  details?: string;
-  hint?: string;
+  code?: string
+  details?: string
+  hint?: string
 }
 
 /**
@@ -43,7 +59,11 @@ interface CustomerError extends Error {
  */
 interface CustomerState {
   customers: Customer[]
-  isLoading: boolean
+  loading: boolean
+  error: string | null
+  totalCount: number
+  hasMore: boolean
+  lastVisible: any
   filters: CustomerFilters
   actions: {
     /** Busca todos os clientes aplicando os filtros atuais */
@@ -70,18 +90,11 @@ interface CustomerState {
  * @param data Dados do formulário do cliente
  */
 const mapFormToDb = (data: CustomerFormValues) => {
-  // Converte a data do formato DD/MM/YYYY para YYYY-MM-DD
-  let birthDate = null;
-  if (data.birthDate) {
-    const [day, month, year] = data.birthDate.split('/');
-    birthDate = `${year}-${month}-${day}`;
-  }
-
   return {
-    full_name: data.name,
+    full_name: data.fullName,
     phone: data.phone,
     email: data.email || null,
-    birth_date: birthDate,
+    birth_date: data.birthDate || null,
     notes: data.notes || null,
   }
 }
@@ -91,25 +104,12 @@ const mapFormToDb = (data: CustomerFormValues) => {
  * @description Converte os dados do banco para o formato do formulário
  * @param data Dados do cliente do banco
  */
-const mapDbToForm = (data: Customer): CustomerFormValues => {
-  // Converte a data do formato YYYY-MM-DD para DD/MM/YYYY
-  let birthDate = undefined;
-  if (data.birth_date) {
-    // Se a data já estiver no formato DD/MM/YYYY, mantém como está
-    if (data.birth_date.includes('/')) {
-      birthDate = data.birth_date;
-    } else {
-      // Se estiver no formato YYYY-MM-DD, converte
-      const [year, month, day] = data.birth_date.split('-');
-      birthDate = `${day}/${month}/${year}`;
-    }
-  }
-
+const mapDbToForm = (data: DatabaseCustomer): CustomerFormValues => {
   return {
-    name: data.full_name,
+    fullName: data.full_name,
     phone: data.phone,
     email: data.email || undefined,
-    birthDate: birthDate,
+    birthDate: data.birth_date || undefined,
     notes: data.notes || undefined,
   }
 }
@@ -119,12 +119,12 @@ const mapDbToForm = (data: Customer): CustomerFormValues => {
  * @description Hook Zustand para gerenciamento de estado dos clientes
  * @example
  * const { customers, isLoading, actions } = useCustomerStore()
- * 
+ *
  * // Buscar clientes
  * useEffect(() => {
  *   actions.fetchCustomers()
  * }, [])
- * 
+ *
  * // Criar novo cliente
  * const handleSubmit = async (data: CustomerFormValues) => {
  *   await actions.createCustomer(data)
@@ -132,330 +132,204 @@ const mapDbToForm = (data: Customer): CustomerFormValues => {
  */
 export const useCustomerStore = create<CustomerState>((set, get) => ({
   customers: [],
-  isLoading: false,
+  loading: false,
+  error: null,
+  totalCount: 0,
+  hasMore: true,
+  lastVisible: null,
   filters: {
-    search: '',
-    sortBy: 'name',
-    sortOrder: 'asc',
-    birthMonth: undefined,
-    hasEmail: undefined,
-    hasNotes: undefined,
+    sortBy: 'full_name',
+    sortOrder: 'desc',
+    perPage: 10,
   },
   actions: {
     fetchCustomers: async () => {
+      const { user } = useAuthStore.getState()
+      if (!user) throw new Error('Usuário não autenticado')
+
       try {
-        set({ isLoading: true })
-
-        // Verificar autenticação
-        const { data: session } = await supabase.auth.getSession()
-        if (!session.session) {
-          throw new Error('Não autorizado. Por favor, faça login novamente.')
-        }
-
+        set({ loading: true })
         const { filters } = get()
-        
-        let query = supabase
-          .from('clients')
-          .select('*, loyalty_points(points_earned)')
-          .is('deleted_at', null)
 
-        // Aplicar filtros
-        if (filters.search) {
-          query = query.ilike('full_name', `%${filters.search}%`)
-        }
-
-        if (filters.hasEmail !== undefined) {
-          if (filters.hasEmail) {
-            query = query.not('email', 'is', null)
-          } else {
-            query = query.is('email', null)
-          }
-        }
-
-        if (filters.hasNotes !== undefined) {
-          if (filters.hasNotes) {
-            query = query.not('notes', 'is', null)
-          } else {
-            query = query.is('notes', null)
-          }
-        }
-
-        if (filters.birthMonth !== undefined) {
-          query = query.like('birth_date', `%-${String(filters.birthMonth).padStart(2, '0')}-%`)
-        }
+        let q = query(
+          collection(db, 'customers'),
+          where('ownerId', '==', user.uid),
+          where('active', '==', true)
+        )
 
         // Aplicar ordenação
-        switch (filters.sortBy) {
-          case 'name':
-            query = query.order('full_name', { ascending: filters.sortOrder === 'asc' })
-            break
-          case 'recent':
-            query = query.order('created_at', { ascending: filters.sortOrder === 'asc' })
-            break
-          case 'points':
-            query = query.order('loyalty_points(points_earned)', { ascending: filters.sortOrder === 'asc', nullsFirst: filters.sortOrder === 'asc' })
-            break
+        if (filters.sortBy === 'full_name') {
+          q = query(q, orderBy('full_name', filters.sortOrder || 'asc'))
+        } else if (filters.sortBy === 'recent') {
+          q = query(q, orderBy('createdAt', filters.sortOrder || 'desc'))
+        } else if (filters.sortBy === 'points') {
+          q = query(q, orderBy('points', filters.sortOrder || 'desc'))
         }
 
-        const { data, error } = await query
-
-        if (error) {
-          if (error.code === 'PGRST301') {
-            throw new Error('Não autorizado. Por favor, faça login novamente.')
-          }
-          throw error
+        // Aplicar filtros
+        if (filters.hasEmail) {
+          q = query(q, where('email', '!=', null))
         }
 
-        // Mapear os dados para incluir os pontos
-        const rawData = data as unknown as Array<{
-          full_name: string
-          phone: string
-          id: string
-          email: string | null
-          birth_date: string | null
-          notes: string | null
-          created_at: string
-          updated_at: string
-          loyalty_points: { points_earned: number } | null
-        }>;
+        if (filters.hasNotes) {
+          q = query(q, where('notes', '!=', null))
+        }
 
-        const customersWithPoints: Customer[] = (rawData || []).map((customer) => ({
-          full_name: customer.full_name,
-          phone: customer.phone,
-          points: customer.loyalty_points?.points_earned || 0,
-          id: customer.id,
-          email: customer.email || undefined,
-          birth_date: customer.birth_date || undefined,
-          notes: customer.notes || undefined,
-          created_at: customer.created_at,
-          updated_at: customer.updated_at
-        }))
+        const snapshot = await getDocs(q)
+        const customers = snapshot.docs.map(doc => ({
+          ...doc.data(),
+          id: doc.id,
+        })) as Customer[]
 
-        set({ customers: customersWithPoints })
+        set({ customers })
       } catch (error) {
-        const customerError = error as CustomerError;
-        console.error('Error fetching customers:', customerError)
-        if (customerError.message.includes('Não autorizado')) {
-          // Redirecionar para login
-          window.location.href = '/auth/login'
-        } else {
-          toast.error('Erro ao carregar clientes. Por favor, tente novamente.')
-        }
+        console.error('Error fetching customers:', error)
+        toast.error('Erro ao carregar clientes')
       } finally {
-        set({ isLoading: false })
+        set({ loading: false })
       }
     },
 
     createCustomer: async (data: CustomerFormValues) => {
+      const { user } = useAuthStore.getState()
+      if (!user) throw new Error('Usuário não autenticado')
+
       try {
-        set({ isLoading: true })
-        const userResponse = await supabase.auth.getUser()
-        
-        if (!userResponse.data.user?.id) {
-          throw new Error('Usuário não autenticado')
+        set({ loading: true })
+        const now = Timestamp.now()
+
+        const customerData = {
+          full_name: data.fullName.trim(),
+          phone: data.phone,
+          email: data.email || null,
+          birth_date: data.birthDate || null,
+          notes: data.notes || null,
+          ownerId: user.uid,
+          createdAt: now,
+          updatedAt: now,
+          active: true,
+          points: 0,
         }
 
-        const mappedData = mapFormToDb(data)
-        console.log('Dados mapeados:', mappedData) // Debug
+        await addDoc(collection(db, 'customers'), customerData)
+        await get().actions.fetchCustomers()
 
-        const { error } = await supabase.from('clients').insert([{
-          ...mappedData,
-          owner_id: userResponse.data.user.id
-        }])
-
-        if (error) {
-          console.error('Detalhes do erro:', {
-            code: error.code,
-            message: error.message,
-            details: error.details,
-            hint: error.hint
-          })
-          throw error
-        }
-
-        get().actions.fetchCustomers()
-        toast.success('Cliente adicionado com sucesso!', {
-          duration: 1500,
-        })
+        toast.success('Cliente adicionado com sucesso!')
       } catch (error) {
-        const customerError = error as CustomerError;
-        console.error('Error creating customer:', {
-          error: customerError,
-          message: customerError.message,
-          details: customerError.details,
-          code: customerError.code
-        })
-        
-        // Mensagens de erro mais específicas
-        if (customerError.code === '23505') {
-          toast.error('Já existe um cliente com este telefone', {
-            duration: 3000,
-          })
-        } else if (customerError.message?.includes('auth')) {
-          toast.error('Erro de autenticação. Por favor, faça login novamente', {
-            duration: 3000,
-          })
-        } else {
-          toast.error(`Erro ao criar cliente: ${customerError.message || 'Erro desconhecido'}`, {
-            duration: 3000,
-          })
-        }
+        console.error('Error creating customer:', error)
+        toast.error('Erro ao criar cliente')
+        throw error
       } finally {
-        set({ isLoading: false })
+        set({ loading: false })
       }
     },
 
     updateCustomer: async (id: string, data: CustomerFormValues) => {
+      const { user } = useAuthStore.getState()
+      if (!user) throw new Error('Usuário não autenticado')
+
       try {
-        set({ isLoading: true })
-        const { error } = await supabase
-          .from('clients')
-          .update(mapFormToDb(data))
-          .eq('id', id)
+        set({ loading: true })
+        const customerRef = doc(db, 'customers', id)
 
-        if (error) throw error
-
-        get().actions.fetchCustomers()
-        toast.success('Cliente atualizado com sucesso!', {
-          duration: 1500,
+        await updateDoc(customerRef, {
+          ...mapFormToDb(data),
+          updatedAt: Timestamp.now(),
         })
+
+        await get().actions.fetchCustomers()
+        toast.success('Cliente atualizado com sucesso!')
       } catch (error) {
         console.error('Error updating customer:', error)
-        toast.error('Erro ao atualizar cliente', {
-          duration: 2000,
-        })
+        toast.error('Erro ao atualizar cliente')
+        throw error
       } finally {
-        set({ isLoading: false })
+        set({ loading: false })
       }
     },
 
     deleteCustomer: async (id: string) => {
+      const { user } = useAuthStore.getState()
+      if (!user) throw new Error('Usuário não autenticado')
+
       try {
-        set({ isLoading: true })
-        const { customers } = get()
-        
-        // Guardar o cliente que está sendo excluído para mostrar na mensagem
-        const customerToDelete = customers.find(c => c.id === id)
-        
-        const { data, error } = await supabase
-          .rpc('soft_delete_client', { client_id: id })
+        set({ loading: true })
+        const customerRef = doc(db, 'customers', id)
 
-        if (error) throw error
-        if (!data) throw new Error('Cliente não encontrado')
-
-        // Atualizar a lista imediatamente
-        get().actions.fetchCustomers()
-
-        // Mostrar toast com mais informações e tempo maior para desfazer
-        toast.success(`Cliente ${customerToDelete?.full_name} excluído\nVocê tem 10 segundos para desfazer esta ação`, {
-          duration: 10000, // 10 segundos
-          action: {
-            label: 'Desfazer',
-            onClick: async () => {
-              try {
-                await get().actions.restoreCustomer(id)
-              } catch (error) {
-                console.error('Error restoring customer:', error)
-                toast.error('Não foi possível desfazer. Tente novamente.', {
-                  duration: 3000,
-                })
-              }
-            },
-          },
+        // Soft delete
+        await updateDoc(customerRef, {
+          active: false,
+          deletedAt: Timestamp.now(),
         })
+
+        await get().actions.fetchCustomers()
+        toast.success('Cliente excluído com sucesso')
       } catch (error) {
         console.error('Error deleting customer:', error)
-        toast.error('Erro ao excluir cliente. Tente novamente.', {
-          duration: 3000,
-        })
+        toast.error('Erro ao excluir cliente')
+        throw error
       } finally {
-        set({ isLoading: false })
+        set({ loading: false })
       }
     },
 
     restoreCustomer: async (id: string) => {
+      const { user } = useAuthStore.getState()
+      if (!user) throw new Error('Usuário não autenticado')
+
       try {
-        set({ isLoading: true })
-        const { data, error } = await supabase
-          .rpc('restore_client', { client_id: id })
+        set({ loading: true })
+        const customerRef = doc(db, 'customers', id)
 
-        if (error) throw error
-        if (!data) throw new Error('Cliente não encontrado')
-
-        // Atualizar a lista
-        await get().actions.fetchCustomers()
-        
-        // Mostrar confirmação de restauração
-        toast.success('Cliente restaurado com sucesso!', {
-          duration: 3000,
+        await updateDoc(customerRef, {
+          active: true,
+          deletedAt: null,
         })
+
+        await get().actions.fetchCustomers()
+        toast.success('Cliente restaurado com sucesso')
       } catch (error) {
         console.error('Error restoring customer:', error)
-        toast.error('Erro ao restaurar cliente. Tente novamente.', {
-          duration: 3000,
-        })
-        throw error // Re-throw para ser tratado no deleteCustomer
+        toast.error('Erro ao restaurar cliente')
+        throw error
       } finally {
-        set({ isLoading: false })
+        set({ loading: false })
       }
     },
 
     updateFilters: (filters: Partial<CustomerFilters>) => {
-      set((state) => ({
+      set(state => ({
         filters: {
           ...state.filters,
           ...filters,
         },
+        lastVisible: null, // Reset pagination when filters change
       }))
     },
 
     fetchCustomer: async (id: string) => {
+      const { user } = useAuthStore.getState()
+      if (!user) throw new Error('Usuário não autenticado')
+
       try {
-        set({ isLoading: true })
+        set({ loading: true })
+        const customerRef = doc(db, 'customers', id)
+        const customerDoc = await getDoc(customerRef)
 
-        const { data: customer, error } = await supabase
-          .from('clients')
-          .select(`
-            *,
-            appointments(
-              id,
-              scheduled_time,
-              final_price,
-              status,
-              notes,
-              service:services(
-                name,
-                duration,
-                base_price
-              )
-            )
-          `)
-          .eq('id', id)
-          .single()
+        if (!customerDoc.exists()) {
+          throw new Error('Cliente não encontrado')
+        }
 
-        if (error) throw error
-
-        const typedCustomer = customer as any
-        set({ 
-          selectedCustomer: {
-            id: typedCustomer.id,
-            full_name: typedCustomer.full_name,
-            phone: typedCustomer.phone,
-            email: typedCustomer.email,
-            birth_date: typedCustomer.birth_date,
-            notes: typedCustomer.notes,
-            created_at: typedCustomer.created_at,
-            points: 0,
-            appointments: typedCustomer.appointments || []
-          }
-        })
+        const customerData = customerDoc.data() as Customer
+        set({ selectedCustomer: { id: customerDoc.id, ...customerData } })
       } catch (error) {
         console.error('Error fetching customer:', error)
         toast.error('Erro ao buscar cliente')
+        throw error
       } finally {
-        set({ isLoading: false })
+        set({ loading: false })
       }
     },
   },
   selectedCustomer: undefined,
-})) 
+}))

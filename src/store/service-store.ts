@@ -1,209 +1,220 @@
 import { create } from 'zustand'
 import { toast } from 'sonner'
+import { db } from '@/lib/firebase'
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  orderBy,
+  Timestamp,
+  getDoc,
+  limit,
+  startAfter,
+} from 'firebase/firestore'
+import { useAuthStore } from './auth-store'
 import { Service, ServiceFormValues, ServiceFilters } from '@/types/service'
-import { supabase } from '@/lib/supabase'
 
 interface ServiceState {
   services: Service[]
-  isLoading: boolean
+  loading: boolean
+  error: string | null
   filters: ServiceFilters
+  selectedService?: Service
+  lastVisible: any
+  hasMore: boolean
   actions: {
     fetchServices: () => Promise<void>
     createService: (data: ServiceFormValues) => Promise<void>
-    updateService: (id: string, data: ServiceFormValues) => Promise<void>
+    updateService: (id: string, data: Partial<ServiceFormValues>) => Promise<void>
     deleteService: (id: string) => Promise<void>
-    toggleServiceStatus: (id: string, isActive: boolean) => Promise<void>
     updateFilters: (filters: Partial<ServiceFilters>) => void
-  }
-}
-
-const mapFormToDb = (data: ServiceFormValues): Partial<Service> => {
-  return {
-    name: data.name,
-    description: data.description || null,
-    base_price: data.base_price,
-    duration: data.duration,
-    is_active: data.is_active,
+    getServiceById: (id: string) => Promise<Service | null>
   }
 }
 
 export const useServiceStore = create<ServiceState>((set, get) => ({
   services: [],
-  isLoading: false,
+  loading: false,
+  error: null,
   filters: {
-    search: '',
-    sortBy: 'name',
-    sortOrder: 'asc',
-    isActive: undefined,
+    sortBy: 'createdAt',
+    sortOrder: 'desc',
+    onlyActive: true,
+    perPage: 10,
   },
+  selectedService: undefined,
+  lastVisible: null,
+  hasMore: true,
+
   actions: {
     fetchServices: async () => {
+      const { filters } = get()
+      const { user } = useAuthStore.getState()
+      if (!user) return
+
+      set({ loading: true, error: null })
+
       try {
-        set({ isLoading: true })
-        const { filters } = get()
-        
-        let query = supabase.from('services').select('*')
+        let q = query(
+          collection(db, 'services'),
+          where('ownerId', '==', user.uid),
+          where('active', '==', filters.onlyActive)
+        )
 
-        // Aplicar filtros
-        if (filters.search) {
-          query = query.ilike('name', `%${filters.search}%`)
+        if (filters.sortBy) {
+          q = query(q, orderBy(filters.sortBy, filters.sortOrder || 'desc'))
         }
 
-        if (filters.isActive !== undefined) {
-          query = query.eq('is_active', filters.isActive)
-        }
+        const snapshot = await getDocs(q)
+        const services = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as Service[]
 
-        // Aplicar ordenação
-        switch (filters.sortBy) {
-          case 'name':
-            query = query.order('name', { ascending: filters.sortOrder === 'asc' })
-            break
-          case 'base_price':
-            query = query.order('base_price', { ascending: filters.sortOrder === 'asc' })
-            break
-          case 'recent':
-            query = query.order('created_at', { ascending: filters.sortOrder === 'asc' })
-            break
-        }
+        // Filtragem por busca no client-side
+        const filteredServices = filters.search
+          ? services.filter(
+              service =>
+                service.name.toLowerCase().includes(filters.search!.toLowerCase()) ||
+                service.description?.toLowerCase().includes(filters.search!.toLowerCase())
+            )
+          : services
 
-        const { data, error } = await query
-
-        if (error) throw error
-
-        set({ services: data || [] })
+        set({
+          services: filteredServices,
+          loading: false,
+          lastVisible: snapshot.docs[snapshot.docs.length - 1] || null,
+          hasMore: snapshot.docs.length === (filters.perPage || 10),
+        })
       } catch (error) {
-        console.error('Error fetching services:', error)
-        toast.error('Erro ao carregar serviços')
-      } finally {
-        set({ isLoading: false })
+        console.error('Erro ao carregar serviços:', error)
+        set({
+          error: 'Erro ao carregar serviços',
+          loading: false,
+        })
       }
     },
 
     createService: async (data: ServiceFormValues) => {
+      const { user } = useAuthStore.getState()
+      if (!user) throw new Error('Usuário não autenticado')
+
+      set({ loading: true, error: null })
+
       try {
-        set({ isLoading: true })
-        const userResponse = await supabase.auth.getUser()
-        if (!userResponse.data.user?.id) {
-          throw new Error('Usuário não autenticado')
+        const now = Timestamp.now()
+        const newService = {
+          ...data,
+          active: true, // Sempre criar como ativo
+          ownerId: user.uid,
+          createdAt: now,
+          updatedAt: now,
         }
 
-        const { data: newService, error } = await supabase
-          .from('services')
-          .insert([{
-            ...mapFormToDb(data),
-            owner_id: userResponse.data.user.id
-          }])
-          .select()
-          .single()
+        const docRef = await addDoc(collection(db, 'services'), newService)
 
-        if (error) throw error
+        // Após criar o serviço, recarregar a lista completa
+        await get().actions.fetchServices()
 
-        set((state) => ({
-          services: [...state.services, newService]
-        }))
-        
-        toast.success('Serviço adicionado com sucesso!')
+        toast.success('Serviço criado com sucesso!')
       } catch (error) {
-        console.error('Error creating service:', error)
+        console.error('Erro ao criar serviço:', error)
         toast.error('Erro ao criar serviço')
+        set({ error: 'Erro ao criar serviço' })
       } finally {
-        set({ isLoading: false })
+        set({ loading: false })
       }
     },
 
-    updateService: async (id: string, data: ServiceFormValues) => {
+    updateService: async (id: string, data: Partial<ServiceFormValues>) => {
+      const { user } = useAuthStore.getState()
+      if (!user) throw new Error('Usuário não autenticado')
+
+      set({ loading: true, error: null })
+
       try {
-        set({ isLoading: true })
+        const updateData = {
+          ...data,
+          updatedAt: Timestamp.now(),
+        }
 
-        const { error } = await supabase
-          .from('services')
-          .update(mapFormToDb(data))
-          .eq('id', id)
+        await updateDoc(doc(db, 'services', id), updateData)
 
-        if (error) throw error
-
-        set((state) => ({
+        set(state => ({
           services: state.services.map(service =>
-            service.id === id ? {
-              ...service,
-              ...mapFormToDb(data),
-              updated_at: new Date().toISOString()
-            } : service
-          )
+            service.id === id ? { ...service, ...updateData } : service
+          ),
         }))
 
         toast.success('Serviço atualizado com sucesso!')
       } catch (error) {
-        console.error('Error updating service:', error)
+        console.error('Erro ao atualizar serviço:', error)
         toast.error('Erro ao atualizar serviço')
+        set({ error: 'Erro ao atualizar serviço' })
       } finally {
-        set({ isLoading: false })
+        set({ loading: false })
       }
     },
 
     deleteService: async (id: string) => {
+      const { user } = useAuthStore.getState()
+      if (!user) throw new Error('Usuário não autenticado')
+
+      set({ loading: true, error: null })
+
       try {
-        set({ isLoading: true })
+        await deleteDoc(doc(db, 'services', id))
 
-        const { error } = await supabase
-          .from('services')
-          .delete()
-          .eq('id', id)
-
-        if (error) throw error
-
-        set((state) => ({
-          services: state.services.filter(service => service.id !== id)
+        set(state => ({
+          services: state.services.filter(service => service.id !== id),
         }))
 
         toast.success('Serviço excluído com sucesso!')
       } catch (error) {
-        console.error('Error deleting service:', error)
+        console.error('Erro ao excluir serviço:', error)
         toast.error('Erro ao excluir serviço')
+        set({ error: 'Erro ao excluir serviço' })
       } finally {
-        set({ isLoading: false })
-      }
-    },
-
-    toggleServiceStatus: async (id: string, isActive: boolean) => {
-      try {
-        set({ isLoading: true })
-
-        const { error } = await supabase
-          .from('services')
-          .update({ is_active: isActive })
-          .eq('id', id)
-
-        if (error) throw error
-
-        set((state) => ({
-          services: state.services.map(service =>
-            service.id === id ? {
-              ...service,
-              is_active: isActive,
-              updated_at: new Date().toISOString()
-            } : service
-          )
-        }))
-
-        toast.success(
-          isActive ? 'Serviço ativado com sucesso!' : 'Serviço desativado com sucesso!'
-        )
-      } catch (error) {
-        console.error('Error toggling service status:', error)
-        toast.error('Erro ao alterar status do serviço')
-      } finally {
-        set({ isLoading: false })
+        set({ loading: false })
       }
     },
 
     updateFilters: (filters: Partial<ServiceFilters>) => {
-      set((state) => ({
+      set(state => ({
         filters: {
           ...state.filters,
           ...filters,
         },
       }))
+      if (filters.onlyActive !== undefined || filters.sortBy || filters.sortOrder) {
+        get().actions.fetchServices()
+      }
+    },
+
+    getServiceById: async (id: string) => {
+      const { user } = useAuthStore.getState()
+      if (!user) throw new Error('Usuário não autenticado')
+
+      try {
+        const docRef = doc(db, 'services', id)
+        const docSnap = await getDoc(docRef)
+
+        if (docSnap.exists()) {
+          const service = { id: docSnap.id, ...docSnap.data() } as Service
+          set({ selectedService: service })
+          return service
+        }
+        return null
+      } catch (error) {
+        console.error('Erro ao buscar serviço:', error)
+        set({ error: 'Erro ao buscar serviço' })
+        return null
+      }
     },
   },
-})) 
+}))

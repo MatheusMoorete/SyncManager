@@ -23,8 +23,22 @@ import {
 } from '@/types/schedule'
 import { useServiceStore } from '@/store/service-store'
 import { useCustomerStore } from '@/store/customer-store'
-import { supabase } from '@/lib/supabase'
-import { PostgrestError } from '@supabase/supabase-js'
+import { db } from '@/lib/firebase'
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  Timestamp,
+  orderBy,
+  getDoc,
+  DocumentData,
+} from 'firebase/firestore'
+import { useAuthStore } from './auth-store'
 
 /**
  * @const businessHours
@@ -43,7 +57,7 @@ const businessHours: BusinessHours = {
  */
 interface AppointmentError extends Error {
   message: string
-  cause?: PostgrestError
+  code?: string
 }
 
 /**
@@ -53,6 +67,7 @@ interface AppointmentError extends Error {
 interface ScheduleState {
   appointments: Appointment[]
   selectedDate: Date
+  loading: boolean
   isLoading: boolean
   filters: ScheduleFilters
   businessHours: BusinessHours
@@ -81,6 +96,20 @@ interface ScheduleState {
   }
 }
 
+interface AppointmentData {
+  ownerId: string
+  client_id: string
+  service_id: string
+  scheduled_time: Timestamp
+  actual_duration: string | null
+  final_price: string
+  status: 'scheduled' | 'completed' | 'canceled' | 'no_show'
+  notes: string | null
+  discount: number | null
+  created_at: Timestamp
+  paymentMethod: 'cash' | 'credit_card' | 'debit_card' | 'pix' | null
+}
+
 /**
  * @hook useScheduleStore
  * @description Hook Zustand para gerenciamento de estado dos agendamentos
@@ -102,6 +131,7 @@ interface ScheduleState {
 export const useScheduleStore = create<ScheduleState>((set, get) => ({
   appointments: [],
   selectedDate: new Date(),
+  loading: false,
   isLoading: false,
   filters: {
     search: '',
@@ -110,68 +140,115 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
   businessHours,
   actions: {
     fetchAppointments: async () => {
+      const { user } = useAuthStore.getState()
+      if (!user) throw new Error('Usuário não autenticado')
+
       try {
-        set({ isLoading: true })
+        set({ loading: true })
         const { filters } = get()
 
-        let query = supabase.from('appointments').select(`
-          *,
-          client:clients(full_name, phone),
-          service:services(name, duration, base_price)
-        `)
-
-        // Aplicar filtros
-        if (filters.search) {
-          query = query.or(
-            `client.full_name.ilike.%${filters.search}%,service.name.ilike.%${filters.search}%`
-          )
-        }
+        let q = query(
+          collection(db, 'appointments'),
+          where('ownerId', '==', user.uid),
+          orderBy('scheduled_time', 'asc')
+        )
 
         // Filtrar por intervalo de datas ou data específica
         if (filters.startDate && filters.endDate) {
-          query = query
-            .gte('scheduled_time', filters.startDate.toISOString())
-            .lt('scheduled_time', filters.endDate.toISOString())
+          q = query(
+            q,
+            where('scheduled_time', '>=', Timestamp.fromDate(filters.startDate)),
+            where('scheduled_time', '<', Timestamp.fromDate(filters.endDate))
+          )
         } else if (filters.date) {
-          // Filtrar por data específica (ignorando a hora)
           const startOfDay = new Date(filters.date)
           startOfDay.setHours(0, 0, 0, 0)
           const endOfDay = new Date(filters.date)
           endOfDay.setHours(23, 59, 59, 999)
 
-          query = query
-            .gte('scheduled_time', startOfDay.toISOString())
-            .lte('scheduled_time', endOfDay.toISOString())
+          q = query(
+            q,
+            where('scheduled_time', '>=', Timestamp.fromDate(startOfDay)),
+            where('scheduled_time', '<=', Timestamp.fromDate(endOfDay))
+          )
         }
 
         if (filters.status) {
-          query = query.eq('status', filters.status.toLowerCase())
+          q = query(q, where('status', '==', filters.status.toLowerCase()))
         }
 
         if (filters.clientId) {
-          query = query.eq('client_id', filters.clientId)
+          q = query(q, where('client_id', '==', filters.clientId))
         }
 
         if (filters.serviceId) {
-          query = query.eq('service_id', filters.serviceId)
+          q = query(q, where('service_id', '==', filters.serviceId))
         }
 
-        const { data, error } = await query
+        const snapshot = await getDocs(q)
+        const appointments: Appointment[] = []
 
-        if (error) throw error
+        // Buscar detalhes do cliente e serviço para cada agendamento
+        for (const docSnapshot of snapshot.docs) {
+          const appointmentData = docSnapshot.data()
+          const [clientDoc, serviceDoc] = await Promise.all([
+            getDoc(doc(db, 'customers', appointmentData.client_id)),
+            getDoc(doc(db, 'services', appointmentData.service_id)),
+          ])
 
-        set({ appointments: data || [] })
+          if (clientDoc.exists() && serviceDoc.exists()) {
+            const clientData = clientDoc.data()
+            const serviceData = serviceDoc.data()
+
+            // Filtrar por termo de busca nos dados do cliente ou serviço
+            if (filters.search) {
+              const searchTerm = filters.search.toLowerCase()
+              const matchesSearch =
+                clientData.full_name.toLowerCase().includes(searchTerm) ||
+                serviceData.name.toLowerCase().includes(searchTerm)
+
+              if (!matchesSearch) continue
+            }
+
+            appointments.push({
+              id: docSnapshot.id,
+              client_id: appointmentData.client_id,
+              service_id: appointmentData.service_id,
+              scheduled_time: appointmentData.scheduled_time.toDate().toISOString(),
+              actual_duration: appointmentData.actual_duration || null,
+              final_price: appointmentData.final_price.toString(),
+              status: appointmentData.status,
+              notes: appointmentData.notes || null,
+              discount: appointmentData.discount || null,
+              created_at: appointmentData.created_at.toDate().toISOString(),
+              client: {
+                full_name: clientData.full_name,
+                phone: clientData.phone,
+              },
+              service: {
+                name: serviceData.name,
+                duration: serviceData.duration,
+                base_price: serviceData.price.toString(),
+              },
+            } as Appointment)
+          }
+        }
+
+        set({ appointments })
       } catch (error) {
         console.error('Error fetching appointments:', error)
         toast.error('Erro ao carregar agendamentos')
       } finally {
-        set({ isLoading: false })
+        set({ loading: false })
       }
     },
 
     createAppointment: async (data: AppointmentFormValues) => {
+      const { user } = useAuthStore.getState()
+      if (!user) throw new Error('Usuário não autenticado')
+
       try {
-        set({ isLoading: true })
+        set({ loading: true })
 
         // Buscar o serviço
         const serviceStore = useServiceStore.getState()
@@ -192,43 +269,76 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
         const isAvailable = get().actions.checkAvailability(
           appointmentDate,
           format(appointmentDate, 'HH:mm'),
-          service.duration
+          `${Math.floor(service.duration / 60)}:${service.duration % 60}`
         )
 
         if (!isAvailable) {
           throw new Error('Horário indisponível')
         }
 
-        // Criar o agendamento no Supabase
-        const { data: newAppointment, error } = await supabase
-          .from('appointments')
-          .insert([data])
-          .select(
-            `
-            *,
-            client:clients(full_name, phone),
-            service:services(name, duration, base_price)
-          `
-          )
-          .single()
+        // Criar o agendamento no Firestore
+        const appointmentData = {
+          ...data,
+          ownerId: user.uid,
+          created_at: Timestamp.now(),
+          scheduled_time: Timestamp.fromDate(new Date(data.scheduled_time)),
+        }
 
-        if (error) throw error
+        const docRef = await addDoc(collection(db, 'appointments'), appointmentData)
 
-        set(state => ({
-          appointments: [...state.appointments, newAppointment],
-        }))
+        // Buscar os dados completos do agendamento criado
+        const [clientDoc, serviceDoc] = await Promise.all([
+          getDoc(doc(db, 'customers', data.client_id)),
+          getDoc(doc(db, 'services', data.service_id)),
+        ])
+
+        if (clientDoc.exists() && serviceDoc.exists()) {
+          const clientData = clientDoc.data()!
+          const serviceData = serviceDoc.data()!
+
+          const newAppointment: Appointment = {
+            id: docRef.id,
+            client_id: data.client_id,
+            service_id: data.service_id,
+            scheduled_time: appointmentData.scheduled_time.toDate().toISOString(),
+            actual_duration: data.actual_duration || null,
+            final_price: data.final_price,
+            status: data.status,
+            notes: data.notes || null,
+            discount: data.discount || null,
+            created_at: appointmentData.created_at.toDate().toISOString(),
+            client: {
+              full_name: clientData.full_name,
+              phone: clientData.phone,
+            },
+            service: {
+              name: serviceData.name,
+              duration: serviceData.duration,
+              base_price: serviceData.price.toString(),
+            },
+          }
+
+          set(state => ({
+            appointments: [...state.appointments, newAppointment],
+          }))
+
+          toast.success('Agendamento criado com sucesso!')
+        }
       } catch (error) {
         const appointmentError = error as AppointmentError
         console.error('Error creating appointment:', appointmentError)
         toast.error(appointmentError.message || 'Erro ao criar agendamento')
       } finally {
-        set({ isLoading: false })
+        set({ loading: false })
       }
     },
 
     updateAppointment: async (id: string, data: AppointmentFormValues) => {
+      const { user } = useAuthStore.getState()
+      if (!user) throw new Error('Usuário não autenticado')
+
       try {
-        set({ isLoading: true })
+        set({ loading: true })
 
         // Buscar o serviço
         const serviceStore = useServiceStore.getState()
@@ -248,7 +358,7 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
           const isAvailable = get().actions.checkAvailability(
             appointmentDate,
             format(appointmentDate, 'HH:mm'),
-            service.duration,
+            `${Math.floor(service.duration / 60)}:${service.duration % 60}`,
             id
           )
 
@@ -257,113 +367,72 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
           }
         }
 
-        // Atualizar o agendamento no Supabase
-        const { data: updatedAppointment, error } = await supabase
-          .from('appointments')
-          .update(data)
-          .eq('id', id)
-          .select(
-            `
-            *,
-            client:clients(full_name, phone),
-            service:services(name, duration, base_price)
-          `
-          )
-          .single()
-
-        if (error) throw error
-
-        // Se o status for 'completed', atualizar os pontos do cliente
-        if (data.status === 'completed') {
-          const { useLoyaltyStore } = await import('@/store/loyalty-store')
-          const loyaltyStore = useLoyaltyStore.getState()
-
-          // Calcular pontos ganhos neste atendimento
-          const pointsEarned = loyaltyStore.actions.calculatePoints(
-            data.service_id,
-            data.final_price
-          )
-
-          if (pointsEarned > 0) {
-            // Obter o usuário atual
-            const {
-              data: { user },
-              error: userError,
-            } = await supabase.auth.getUser()
-            if (userError) throw userError
-            if (!user) throw new Error('Usuário não autenticado')
-
-            // Buscar pontos atuais do cliente
-            const { data: currentPoints } = await supabase
-              .from('loyalty_points')
-              .select('points_earned, points_spent')
-              .eq('client_id', data.client_id)
-              .single()
-
-            // Calcular novos pontos
-            const newPointsEarned = (currentPoints?.points_earned || 0) + pointsEarned
-
-            // Atualizar ou criar registro de pontos
-            const { data: loyaltyData, error: loyaltyError } = await supabase
-              .from('loyalty_points')
-              .upsert(
-                {
-                  owner_id: user.id,
-                  client_id: data.client_id,
-                  points_earned: newPointsEarned,
-                  points_spent: currentPoints?.points_spent || 0,
-                },
-                {
-                  onConflict: 'client_id',
-                  ignoreDuplicates: false,
-                }
-              )
-              .select()
-              .single()
-
-            if (loyaltyError) throw loyaltyError
-
-            // Registrar no histórico de pontos
-            const { error: historyError } = await supabase.from('points_history').insert({
-              owner_id: user.id,
-              client_id: data.client_id,
-              appointment_id: id,
-              points: pointsEarned,
-              type: 'earned',
-              description: `Pontos ganhos pelo serviço: ${service.name}`,
-            })
-
-            if (historyError) throw historyError
-          }
+        // Atualizar o agendamento no Firestore
+        const appointmentData = {
+          ...data,
+          scheduled_time: Timestamp.fromDate(new Date(data.scheduled_time)),
         }
 
-        // Atualizar o estado local
-        set(state => ({
-          appointments: state.appointments.map(a =>
-            a.id === id ? { ...a, ...updatedAppointment } : a
-          ),
-        }))
+        await updateDoc(doc(db, 'appointments', id), appointmentData)
 
-        toast.success('Agendamento atualizado com sucesso!')
+        // Buscar os dados atualizados
+        const [clientDoc, serviceDoc] = await Promise.all([
+          getDoc(doc(db, 'customers', data.client_id)),
+          getDoc(doc(db, 'services', data.service_id)),
+        ])
+
+        if (clientDoc.exists() && serviceDoc.exists()) {
+          const clientData = clientDoc.data()!
+          const serviceData = serviceDoc.data()!
+
+          const updatedAppointment: Appointment = {
+            id,
+            client_id: data.client_id,
+            service_id: data.service_id,
+            scheduled_time: appointmentData.scheduled_time.toDate().toISOString(),
+            actual_duration: data.actual_duration || null,
+            final_price: data.final_price,
+            status: data.status,
+            notes: data.notes || null,
+            discount: data.discount || null,
+            created_at: currentAppointment.created_at,
+            client: {
+              full_name: clientData.full_name,
+              phone: clientData.phone,
+            },
+            service: {
+              name: serviceData.name,
+              duration: serviceData.duration,
+              base_price: serviceData.price.toString(),
+            },
+          }
+
+          set(state => ({
+            appointments: state.appointments.map(a => (a.id === id ? updatedAppointment : a)),
+          }))
+
+          toast.success('Agendamento atualizado com sucesso!')
+        }
       } catch (error) {
         const appointmentError = error as AppointmentError
         console.error('Error updating appointment:', appointmentError)
         toast.error(appointmentError.message || 'Erro ao atualizar agendamento')
       } finally {
-        set({ isLoading: false })
+        set({ loading: false })
       }
     },
 
     deleteAppointment: async (id: string) => {
+      const { user } = useAuthStore.getState()
+      if (!user) throw new Error('Usuário não autenticado')
+
       try {
-        set({ isLoading: true })
+        set({ loading: true })
 
-        const { error } = await supabase.from('appointments').delete().eq('id', id)
-
-        if (error) throw error
+        await deleteDoc(doc(db, 'appointments', id))
 
         set(state => ({
-          appointments: state.appointments.filter(appointment => appointment.id !== id),
+          appointments: state.appointments.filter(a => a.id !== id),
         }))
 
         toast.success('Agendamento excluído com sucesso!')
@@ -371,7 +440,7 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
         console.error('Error deleting appointment:', error)
         toast.error('Erro ao excluir agendamento')
       } finally {
-        set({ isLoading: false })
+        set({ loading: false })
       }
     },
 
@@ -382,6 +451,7 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
           ...filters,
         },
       }))
+      get().actions.fetchAppointments()
     },
 
     setSelectedDate: (date: Date) => {
@@ -389,46 +459,45 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
     },
 
     getAvailableTimeSlots: (date: Date, duration: string) => {
-      const { businessHours, appointments } = get()
-      const timeSlots: TimeSlot[] = []
-
-      // Converter duração para minutos
+      const { appointments, businessHours } = get()
+      const slots: TimeSlot[] = []
       const [hours, minutes] = duration.split(':').map(Number)
       const durationInMinutes = hours * 60 + minutes
 
-      // Gerar horários possíveis
-      const startTime = parse(businessHours.start, 'HH:mm', date)
-      const endTime = parse(businessHours.end, 'HH:mm', date)
-      let currentTime = startTime
-
-      while (currentTime < endTime) {
-        const timeString = format(currentTime, 'HH:mm')
-        const endTimeSlot = addDays(currentTime, 0)
-        endTimeSlot.setMinutes(endTimeSlot.getMinutes() + durationInMinutes)
-
-        // Verificar se o horário está disponível
-        const isAvailable = get().actions.checkAvailability(date, timeString, duration)
-
-        // Encontrar agendamento existente neste horário
-        const existingAppointment = appointments.find(appointment => {
-          const appointmentDate = new Date(appointment.scheduled_time)
-          return (
-            format(appointmentDate, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd') &&
-            format(appointmentDate, 'HH:mm') === timeString
-          )
-        })
-
-        timeSlots.push({
-          time: timeString,
-          available: isAvailable,
-          appointment: existingAppointment,
-        })
-
-        // Avançar para o próximo intervalo
-        currentTime.setMinutes(currentTime.getMinutes() + businessHours.interval)
+      // Verificar se é um dia de funcionamento
+      const dayOfWeek = date.getDay()
+      if (businessHours.daysOff.includes(dayOfWeek)) {
+        return slots
       }
 
-      return timeSlots
+      // Gerar slots de horário
+      const startTime = parse(businessHours.start, 'HH:mm', date)
+      const endTime = parse(businessHours.end, 'HH:mm', date)
+      let currentSlot = startTime
+
+      while (currentSlot < endTime) {
+        const slotEnd = addDays(currentSlot, 0)
+        slotEnd.setMinutes(slotEnd.getMinutes() + durationInMinutes)
+
+        if (slotEnd <= endTime) {
+          const isAvailable = get().actions.checkAvailability(
+            date,
+            format(currentSlot, 'HH:mm'),
+            duration
+          )
+
+          if (isAvailable) {
+            slots.push({
+              time: format(currentSlot, 'HH:mm'),
+              available: true,
+            })
+          }
+        }
+
+        currentSlot.setMinutes(currentSlot.getMinutes() + businessHours.interval)
+      }
+
+      return slots
     },
 
     checkAvailability: (
@@ -437,36 +506,46 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
       duration: string,
       currentAppointmentId?: string
     ) => {
-      const appointments = get().appointments
-      const [hours, minutes] = time.split(':').map(Number)
-      const [durationHours, durationMinutes] = duration.split(':').map(Number)
+      const { appointments, businessHours } = get()
 
-      const startTime = new Date(date)
-      startTime.setHours(hours, minutes, 0, 0)
+      // Verificar se é um dia de funcionamento
+      const dayOfWeek = date.getDay()
+      if (businessHours.daysOff.includes(dayOfWeek)) {
+        return false
+      }
 
-      const endTime = new Date(startTime)
-      endTime.setHours(endTime.getHours() + durationHours)
-      endTime.setMinutes(endTime.getMinutes() + durationMinutes)
+      // Verificar se está dentro do horário de funcionamento
+      const [hours, minutes] = duration.split(':').map(Number)
+      const durationInMinutes = hours * 60 + minutes
+
+      const appointmentStart = parse(time, 'HH:mm', date)
+      const appointmentEnd = addDays(appointmentStart, 0)
+      appointmentEnd.setMinutes(appointmentEnd.getMinutes() + durationInMinutes)
+
+      const businessStart = parse(businessHours.start, 'HH:mm', date)
+      const businessEnd = parse(businessHours.end, 'HH:mm', date)
+
+      if (appointmentStart < businessStart || appointmentEnd > businessEnd) {
+        return false
+      }
 
       // Verificar conflitos com outros agendamentos
       const hasConflict = appointments.some(appointment => {
-        // Ignorar o agendamento atual se estiver editando
         if (currentAppointmentId && appointment.id === currentAppointmentId) {
           return false
         }
 
-        const appointmentStart = parseISO(appointment.scheduled_time)
-        const [appDurationHours, appDurationMinutes] =
-          appointment.actual_duration?.split(':') || appointment.service.duration.split(':')
-        const appointmentEnd = new Date(appointmentStart)
-        appointmentEnd.setHours(appointmentEnd.getHours() + parseInt(appDurationHours))
-        appointmentEnd.setMinutes(appointmentEnd.getMinutes() + parseInt(appDurationMinutes))
+        const existingStart = appointment.scheduled_time
+        const existingEnd = addDays(existingStart, 0)
+        existingEnd.setMinutes(
+          existingEnd.getMinutes() +
+            parseInt(appointment.service.duration.split(':')[0]) * 60 +
+            parseInt(appointment.service.duration.split(':')[1])
+        )
 
-        // Verificar se há sobreposição de horários
-        return (
-          (startTime >= appointmentStart && startTime < appointmentEnd) || // Novo início durante outro agendamento
-          (endTime > appointmentStart && endTime <= appointmentEnd) || // Novo fim durante outro agendamento
-          (startTime <= appointmentStart && endTime >= appointmentEnd) // Novo agendamento engloba outro
+        return areIntervalsOverlapping(
+          { start: appointmentStart, end: appointmentEnd },
+          { start: existingStart, end: existingEnd }
         )
       })
 

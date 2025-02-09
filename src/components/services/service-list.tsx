@@ -1,27 +1,20 @@
 'use client'
 
-import { useState, useEffect } from "react"
-import { Service, ServiceFormValues } from "@/types/service"
-import { ServiceDialog } from "./service-dialog"
-import { Button } from "@/components/ui/button"
-import { MoreHorizontal, Edit, Trash2 } from "lucide-react"
-import { toast } from "sonner"
-import { SearchBar } from "@/components/ui/data-list/search-bar"
+import { useState, useEffect } from 'react'
+import { Service, ServiceFormValues } from '@/types/service'
+import { ServiceDialog } from './service-dialog'
+import { Button } from '@/components/ui/button'
+import { MoreHorizontal, Edit, Trash2 } from 'lucide-react'
+import { toast } from 'sonner'
+import { SearchBar } from '@/components/ui/data-list/search-bar'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "../ui/table"
-import { useServiceStore } from "@/store/service-store"
+} from '@/components/ui/dropdown-menu'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table'
+import { useServiceStore } from '@/store/service-store'
 
 interface ServiceListProps {
   services: Service[]
@@ -30,85 +23,92 @@ interface ServiceListProps {
   isLoading?: boolean
 }
 
-export function ServiceList({
-  services,
-  onUpdate,
-  onDelete,
-  isLoading
-}: ServiceListProps) {
+export function ServiceList({ services, onUpdate, onDelete, isLoading }: ServiceListProps) {
   const { filters, actions } = useServiceStore()
-  const [search, setSearch] = useState("")
-
-  // Carregar serviços ao montar o componente
-  useEffect(() => {
-    actions.fetchServices()
-  }, [actions])
+  const [search, setSearch] = useState('')
+  const [serviceToEdit, setServiceToEdit] = useState<Service | null>(null)
 
   // Opções de ordenação
   const sortOptions = [
     { label: 'Nome', value: 'name' },
-    { label: 'Preço', value: 'base_price' },
-    { label: 'Mais recentes', value: 'recent' }
+    { label: 'Preço', value: 'price' },
+    { label: 'Mais recentes', value: 'createdAt' },
   ]
 
   // Opções de filtro
   const filterOptions = [
     {
       label: 'Serviços ativos',
-      value: 'isActive',
-      checked: filters.isActive === true,
-      onCheckedChange: (checked: boolean) => actions.updateFilters({ isActive: checked || undefined })
-    }
+      value: 'active',
+      checked: filters.onlyActive ?? true,
+      onCheckedChange: (checked: boolean) => {
+        actions.updateFilters({ onlyActive: checked })
+      },
+    },
   ]
+
+  // Carregar serviços quando o componente montar
+  useEffect(() => {
+    actions.fetchServices()
+  }, [actions])
 
   // Atualizar filtros quando a busca mudar
   useEffect(() => {
-    actions.updateFilters({ search })
+    const debounceTimeout = setTimeout(() => {
+      actions.updateFilters({ search })
+    }, 300)
+
+    return () => clearTimeout(debounceTimeout)
   }, [search, actions])
 
   const handleDelete = (id: string, name: string) => {
-    toast.custom((t) => (
-      <div className="p-4 bg-white rounded-lg shadow-lg border border-charcoal/10">
-        <h3 className="font-medium text-heading mb-2">Confirmar exclusão</h3>
-        <p className="text-sm text-muted-foreground mb-4">
-          Tem certeza que deseja excluir o serviço <span className="font-medium text-heading">{name}</span>?
-        </p>
-        <div className="flex justify-end gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => toast.dismiss(t)}
-            className="hover:bg-neutral-cream/50"
-          >
-            Cancelar
-          </Button>
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={async () => {
-              await onDelete(id)
-              toast.dismiss(t)
-            }}
-            className="bg-error hover:bg-error/90 text-white"
-          >
-            Excluir
-          </Button>
+    toast.custom(
+      t => (
+        <div className="p-4 bg-white rounded-lg shadow-lg border border-charcoal/10">
+          <h3 className="font-medium text-heading mb-2">Confirmar exclusão</h3>
+          <p className="text-sm text-muted-foreground mb-4">
+            Tem certeza que deseja excluir o serviço{' '}
+            <span className="font-medium text-heading">{name}</span>?
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => toast.dismiss(t)}
+              className="hover:bg-neutral-cream/50"
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={async () => {
+                await onDelete(id)
+                toast.dismiss(t)
+              }}
+              className="bg-error hover:bg-error/90 text-white"
+            >
+              Excluir
+            </Button>
+          </div>
         </div>
-      </div>
-    ), {
-      duration: Infinity,
-    })
+      ),
+      {
+        duration: Infinity,
+      }
+    )
   }
 
-  const filteredServices = services.filter((service) => {
-    const matchesSearch = service.name.toLowerCase().includes(search.toLowerCase())
-    return matchesSearch
-  })
+  const handleEdit = (service: Service) => {
+    setServiceToEdit(service)
+  }
+
+  const filteredServices = services
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
-      currency: 'BRL'
+      currency: 'BRL',
     }).format(price)
   }
 
@@ -120,95 +120,82 @@ export function ServiceList({
   }
 
   return (
-    <div className="space-y-4">
-      <SearchBar
-        value={search}
-        onChange={setSearch}
-        placeholder="Buscar serviços..."
-        filterOptions={filterOptions}
-        sortOptions={sortOptions}
-        currentSortBy={filters.sortBy}
-        currentSortOrder={filters.sortOrder}
-        onSortByChange={(value) => actions.updateFilters({ sortBy: value as 'name' | 'base_price' | 'recent' })}
-        onSortOrderChange={(value) => actions.updateFilters({ sortOrder: value })}
-      />
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <SearchBar
+          value={search}
+          onChange={setSearch}
+          placeholder="Buscar serviços..."
+          filterOptions={filterOptions}
+          sortOptions={sortOptions}
+          currentSortBy={filters.sortBy || 'name'}
+          currentSortOrder={filters.sortOrder || 'asc'}
+          onSortByChange={value => actions.updateFilters({ sortBy: value as any })}
+          onSortOrderChange={value => actions.updateFilters({ sortOrder: value })}
+        />
+      </div>
 
-      {/* Versão Desktop */}
-      <div className="rounded-lg border bg-white hidden md:block">
+      <div className="rounded-lg border bg-white">
         <Table>
           <TableHeader className="bg-neutral-cream/30">
             <TableRow>
-              <TableHead className="w-[300px] text-heading font-heading">NOME</TableHead>
-              <TableHead className="text-heading font-heading">PREÇO</TableHead>
+              <TableHead className="w-[250px] text-heading font-heading">NOME</TableHead>
+              <TableHead className="w-[150px] text-heading font-heading">PREÇO</TableHead>
+              <TableHead className="w-[150px] text-heading font-heading">DURAÇÃO</TableHead>
               <TableHead className="w-[70px] text-heading font-heading"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredServices.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={3} className="h-24 text-center text-muted-foreground">
+                <TableCell colSpan={4} className="h-24 text-center text-muted-foreground">
                   Nenhum serviço encontrado
                 </TableCell>
               </TableRow>
             ) : (
-              filteredServices.map((service) => (
-                <TableRow key={service.id}>
-                  <TableCell>
-                    <div>
-                      <p className="font-medium text-heading">{service.name}</p>
-                      {service.description && (
-                        <p className="text-sm text-muted-foreground">
-                          {truncateDescription(service.description)}
-                        </p>
-                      )}
+              filteredServices.map(service => (
+                <TableRow key={service.id} className="hover:bg-neutral-cream/10 group">
+                  <TableCell className="py-3">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium text-heading group-hover:text-terracotta transition-colors">
+                        {service.name}
+                      </p>
                     </div>
                   </TableCell>
-                  <TableCell className="font-medium text-heading">{formatPrice(service.base_price)}</TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          className="h-8 w-8 p-0 hover:bg-neutral-cream/50"
-                        >
-                          <span className="sr-only">Abrir menu</span>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-[160px]">
-                        <ServiceDialog
-                          trigger={
-                            <DropdownMenuItem
-                              onSelect={(e) => {
-                                e.preventDefault()
-                                e.stopPropagation()
-                              }}
-                              className="hover:bg-neutral-cream/50"
-                            >
-                              <Edit className="mr-2 h-4 w-4" />
-                              Editar
-                            </DropdownMenuItem>
-                          }
-                          title="Editar Serviço"
-                          initialData={{
-                            name: service.name,
-                            description: service.description || '',
-                            base_price: service.base_price,
-                            duration: service.duration,
-                            is_active: service.is_active,
-                          }}
-                          onSubmit={(data) => onUpdate(service.id!, data)}
-                          isLoading={isLoading}
-                        />
-                        <DropdownMenuItem
-                          className="text-error hover:bg-error/10 hover:text-error"
-                          onClick={() => handleDelete(service.id!, service.name)}
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Excluir
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                  <TableCell className="py-3">
+                    <p className="font-medium text-heading">{formatPrice(service.price)}</p>
+                  </TableCell>
+                  <TableCell className="py-3">
+                    <p className="font-medium text-heading">{service.duration} minutos</p>
+                  </TableCell>
+                  <TableCell className="py-3">
+                    <div className="flex justify-end gap-2">
+                      <ServiceDialog
+                        trigger={
+                          <Button variant="ghost" size="icon" className="hover:bg-neutral-cream/50">
+                            <Edit className="h-4 w-4" />
+                          </Button>
+                        }
+                        title="Editar Serviço"
+                        initialData={{
+                          name: service.name,
+                          description: service.description || '',
+                          price: service.price,
+                          duration: service.duration,
+                          active: service.active,
+                        }}
+                        onSubmit={data => onUpdate(service.id, data)}
+                        isLoading={isLoading}
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDelete(service.id, service.name)}
+                        className="hover:bg-neutral-cream/50"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
@@ -216,88 +203,6 @@ export function ServiceList({
           </TableBody>
         </Table>
       </div>
-
-      {/* Versão Mobile */}
-      <div className="md:hidden space-y-4">
-        {filteredServices.length === 0 ? (
-          <div className="text-center py-6 text-muted-foreground">
-            Nenhum serviço encontrado
-          </div>
-        ) : (
-          filteredServices.map((service) => (
-            <div
-              key={service.id}
-              className="bg-white rounded-lg border p-4 space-y-3 active:bg-neutral-cream/30 hover:border-terracotta/20 hover:shadow-md transition-all duration-200"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-heading group-hover:text-terracotta transition-colors">
-                    {service.name}
-                  </p>
-                  {service.description && (
-                    <p className="text-sm text-muted-foreground">
-                      {truncateDescription(service.description)}
-                    </p>
-                  )}
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="text-sm font-medium text-heading">
-                    {formatPrice(service.base_price)}
-                  </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        className="h-8 w-8 p-0 hover:bg-neutral-cream/50"
-                      >
-                        <span className="sr-only">Abrir menu</span>
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-[160px]">
-                      <ServiceDialog
-                        trigger={
-                          <DropdownMenuItem
-                            onSelect={(e) => {
-                              e.preventDefault()
-                              e.stopPropagation()
-                            }}
-                            className="hover:bg-neutral-cream/50"
-                          >
-                            <Edit className="mr-2 h-4 w-4" />
-                            Editar
-                          </DropdownMenuItem>
-                        }
-                        title="Editar Serviço"
-                        initialData={{
-                          name: service.name,
-                          description: service.description || '',
-                          base_price: service.base_price,
-                          duration: service.duration,
-                          is_active: service.is_active,
-                        }}
-                        onSubmit={(data) => onUpdate(service.id!, data)}
-                        isLoading={isLoading}
-                      />
-                      <DropdownMenuItem
-                        className="text-error hover:bg-error/10 hover:text-error"
-                        onClick={() => handleDelete(service.id!, service.name)}
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Excluir
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <span>Duração:</span>
-                <span>{service.duration}</span>
-              </div>
-            </div>
-          ))
-        )}
-      </div>
     </div>
   )
-} 
+}

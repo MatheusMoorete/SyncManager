@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import { useState } from 'react'
 import { AppointmentForm } from './appointment-form'
+import { Timestamp } from 'firebase/firestore'
 
 interface AppointmentCardProps {
   appointment: Appointment
@@ -88,16 +89,18 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
         const { useFinanceStore } = await import('@/store/finance-store')
         const financeStore = useFinanceStore.getState()
 
-        await financeStore.actions.addTransaction({
-          type: 'income',
+        const transactionData = {
+          type: 'income' as const,
           category: 'Serviços',
-          amount: appointment.final_price,
-          payment_method: 'pix', // Método padrão, pode ser ajustado conforme necessário
-          transaction_date: new Date().toISOString(),
-          notes: `Atendimento: ${appointment.service.name} - Cliente: ${appointment.client.full_name}`,
-          client_id: appointment.client_id,
-          receipt_url: null,
-        })
+          amount: Number(appointment.final_price),
+          paymentMethod: 'pix' as const,
+          notes: `Pagamento referente ao agendamento #${appointment.id}`,
+          transactionDate: Timestamp.fromDate(new Date(appointment.scheduled_time)),
+          clientId: appointment.client_id,
+          receiptUrl: null,
+        }
+
+        await financeStore.actions.addTransaction(transactionData)
 
         toast.success('Atendimento concluído e receita registrada com sucesso!')
       } else {

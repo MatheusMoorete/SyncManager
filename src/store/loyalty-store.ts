@@ -1,6 +1,22 @@
 import { create } from 'zustand'
-import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
+import { db } from '@/lib/firebase'
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  Timestamp,
+  orderBy,
+  getDoc,
+  setDoc,
+  writeBatch,
+} from 'firebase/firestore'
+import { useAuthStore } from './auth-store'
 
 interface LoyaltyLevel {
   name: string
@@ -21,9 +37,20 @@ interface LoyaltyConfig {
   levels: LoyaltyLevel[]
 }
 
+interface AppointmentDoc {
+  id: string
+  client_id: string
+  service_id: string
+  final_price: number
+  status: 'scheduled' | 'completed' | 'canceled' | 'no_show'
+  service?: {
+    name: string
+  }
+}
+
 interface LoyaltyStore {
   config: LoyaltyConfig | null
-  isLoading: boolean
+  loading: boolean
   error: string | null
   actions: {
     fetchConfig: () => Promise<void>
@@ -34,52 +61,39 @@ interface LoyaltyStore {
   }
 }
 
-const supabase = createClient()
+const defaultConfig: LoyaltyConfig = {
+  enabled: false,
+  pointsPerCurrency: 1,
+  minimumForPoints: 0,
+  serviceRules: [],
+  levels: [],
+}
 
 export const useLoyaltyStore = create<LoyaltyStore>((set, get) => ({
   config: null,
-  isLoading: false,
+  loading: false,
   error: null,
   actions: {
     fetchConfig: async () => {
-      set({ isLoading: true, error: null })
+      const { user } = useAuthStore.getState()
+      if (!user) throw new Error('Usuário não autenticado')
+
+      set({ loading: true, error: null })
       try {
-        // Obter o usuário atual
-        const {
-          data: { user },
-          error: userError,
-        } = await supabase.auth.getUser()
-        if (userError) throw userError
-        if (!user) throw new Error('Usuário não autenticado')
+        const docRef = doc(db, 'loyalty_config', user.uid)
+        const docSnap = await getDoc(docRef)
 
-        const { data, error } = await supabase
-          .from('loyalty_config')
-          .select('*')
-          .eq('owner_id', user.id)
-          .single()
-
-        if (error) {
-          // Se não encontrar configuração, retornar configuração padrão
-          if (error.code === 'PGRST116') {
-            const defaultConfig = {
-              enabled: false,
-              pointsPerCurrency: 1,
-              minimumForPoints: 0,
-              serviceRules: [],
-              levels: [],
-            }
-            set({ config: defaultConfig })
-            return
-          }
-          throw error
+        if (!docSnap.exists()) {
+          set({ config: defaultConfig })
+          return
         }
 
-        // Garantir que os arrays estejam definidos
+        const data = docSnap.data()
         const config = {
           ...data,
           serviceRules: data.serviceRules || [],
           levels: data.levels || [],
-        }
+        } as LoyaltyConfig
 
         set({ config })
       } catch (error) {
@@ -88,28 +102,21 @@ export const useLoyaltyStore = create<LoyaltyStore>((set, get) => ({
         set({ error: errorMessage })
         console.error('Error fetching loyalty config:', error)
       } finally {
-        set({ isLoading: false })
+        set({ loading: false })
       }
     },
 
     updateConfig: async (config: LoyaltyConfig) => {
-      set({ isLoading: true, error: null })
+      const { user } = useAuthStore.getState()
+      if (!user) throw new Error('Usuário não autenticado')
+
+      set({ loading: true, error: null })
       try {
-        // Obter o usuário atual
-        const {
-          data: { user },
-          error: userError,
-        } = await supabase.auth.getUser()
-        if (userError) throw userError
-        if (!user) throw new Error('Usuário não autenticado')
-
-        const { error } = await supabase.from('loyalty_config').upsert({
-          id: 1,
-          owner_id: user.id,
+        const docRef = doc(db, 'loyalty_config', user.uid)
+        await setDoc(docRef, {
           ...config,
+          updated_at: Timestamp.now(),
         })
-
-        if (error) throw error
 
         set({ config })
 
@@ -122,7 +129,7 @@ export const useLoyaltyStore = create<LoyaltyStore>((set, get) => ({
         console.error('Error updating loyalty config:', error)
         throw error
       } finally {
-        set({ isLoading: false })
+        set({ loading: false })
       }
     },
 
@@ -152,38 +159,28 @@ export const useLoyaltyStore = create<LoyaltyStore>((set, get) => ({
     },
 
     recalculateHistoricalPoints: async () => {
+      const { user } = useAuthStore.getState()
+      if (!user) throw new Error('Usuário não autenticado')
+
+      const { config } = get()
+      if (!config || !config.enabled) return
+
       try {
-        const { config } = get()
-        if (!config || !config.enabled) return
-
-        // Obter o usuário atual
-        const {
-          data: { user },
-          error: userError,
-        } = await supabase.auth.getUser()
-        if (userError) throw userError
-        if (!user) throw new Error('Usuário não autenticado')
-
         // Buscar todos os atendimentos concluídos
-        const { data: appointments, error: appointmentsError } = await supabase
-          .from('appointments')
-          .select(
-            `
-            id,
-            client_id,
-            service_id,
-            final_price,
-            status
-          `
-          )
-          .eq('status', 'completed')
+        const appointmentsQuery = query(
+          collection(db, 'appointments'),
+          where('owner_id', '==', user.uid),
+          where('status', '==', 'completed')
+        )
 
-        if (appointmentsError) throw appointmentsError
+        const appointmentsSnap = await getDocs(appointmentsQuery)
+        const appointments = appointmentsSnap.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as AppointmentDoc[]
 
         // Se não houver atendimentos, não precisa recalcular
-        if (!appointments || appointments.length === 0) {
-          return
-        }
+        if (appointments.length === 0) return
 
         // Agrupar atendimentos por cliente
         const clientAppointments = appointments.reduce((acc, appointment) => {
@@ -194,79 +191,75 @@ export const useLoyaltyStore = create<LoyaltyStore>((set, get) => ({
           return acc
         }, {} as Record<string, any[]>)
 
+        const batch = writeBatch(db)
+
         // Recalcular pontos para cada cliente
         for (const [clientId, clientAppts] of Object.entries(clientAppointments)) {
-          try {
-            let totalPoints = 0
+          let totalPoints = 0
 
-            // Calcular pontos para cada atendimento
-            for (const appointment of clientAppts) {
-              const points = get().actions.calculatePoints(
-                appointment.service_id,
-                appointment.final_price
-              )
-              totalPoints += points
-            }
+          // Calcular pontos para cada atendimento
+          for (const appointment of clientAppts) {
+            const points = get().actions.calculatePoints(
+              appointment.service_id,
+              appointment.final_price
+            )
+            totalPoints += points
+          }
 
-            // Buscar registro atual de pontos do cliente
-            const { data: currentPoints } = await supabase
-              .from('loyalty_points')
-              .select('points_spent')
-              .eq('client_id', clientId)
-              .maybeSingle()
+          // Buscar registro atual de pontos do cliente
+          const pointsRef = doc(db, 'loyalty_points', clientId)
+          const pointsSnap = await getDoc(pointsRef)
+          const currentPoints = pointsSnap.exists() ? pointsSnap.data().points_spent : 0
 
-            // Atualizar pontos do cliente usando upsert com onConflict
-            const { error: updateError } = await supabase.from('loyalty_points').upsert(
-              {
-                owner_id: user.id,
-                client_id: clientId,
-                points_earned: totalPoints,
-                points_spent: currentPoints?.points_spent || 0,
-              },
-              {
-                onConflict: 'client_id',
-                ignoreDuplicates: false,
-              }
+          // Atualizar pontos do cliente
+          batch.set(
+            pointsRef,
+            {
+              owner_id: user.uid,
+              client_id: clientId,
+              points_earned: totalPoints,
+              points_spent: currentPoints,
+              updated_at: Timestamp.now(),
+            },
+            { merge: true }
+          )
+
+          // Limpar histórico antigo e criar novo
+          const historyQuery = query(
+            collection(db, 'points_history'),
+            where('client_id', '==', clientId),
+            where('type', '==', 'earned')
+          )
+          const historySnap = await getDocs(historyQuery)
+          historySnap.docs.forEach(doc => {
+            batch.delete(doc.ref)
+          })
+
+          // Criar novos registros de histórico
+          for (const appointment of clientAppts) {
+            const points = get().actions.calculatePoints(
+              appointment.service_id,
+              appointment.final_price
             )
 
-            if (updateError) throw updateError
-
-            // Limpar histórico antigo
-            await supabase
-              .from('points_history')
-              .delete()
-              .eq('client_id', clientId)
-              .eq('type', 'earned')
-
-            // Registrar novo histórico em lote
-            const historyRecords = clientAppts.map(appointment => ({
-              owner_id: user.id,
+            const historyRef = doc(collection(db, 'points_history'))
+            batch.set(historyRef, {
+              owner_id: user.uid,
               client_id: clientId,
               appointment_id: appointment.id,
-              points: get().actions.calculatePoints(
-                appointment.service_id,
-                appointment.final_price
-              ),
+              points,
               type: 'earned',
-              description: `Pontos recalculados - Atendimento ID: ${appointment.id}`,
-            }))
-
-            const { error: historyError } = await supabase
-              .from('points_history')
-              .insert(historyRecords)
-
-            if (historyError) throw historyError
-          } catch (error) {
-            console.error(`Error processing client ${clientId}:`, error)
-            continue // Continua com o próximo cliente mesmo se houver erro
+              description: `Pontos ganhos pelo serviço: ${appointment.service?.name || 'Serviço'}`,
+              created_at: Timestamp.now(),
+            })
           }
         }
 
+        await batch.commit()
         toast.success('Pontos recalculados com sucesso!')
       } catch (error) {
         console.error('Error recalculating points:', error)
         toast.error('Erro ao recalcular pontos')
-        throw error
       }
     },
   },

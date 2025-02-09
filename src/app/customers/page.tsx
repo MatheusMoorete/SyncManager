@@ -14,14 +14,20 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 
 // Componentes carregados dinamicamente
-const CustomerList = dynamic(() => import('@/components/customers/customer-list').then(mod => mod.CustomerList), {
-  loading: () => <CustomerListSkeleton />,
-  ssr: false
-})
+const CustomerList = dynamic(
+  () => import('@/components/customers/customer-list').then(mod => mod.CustomerList),
+  {
+    loading: () => <CustomerListSkeleton />,
+    ssr: false,
+  }
+)
 
-const CustomerDialog = dynamic(() => import('@/components/customers/dialogs/customer-dialog').then(mod => mod.CustomerDialog), {
-  ssr: false
-})
+const CustomerDialog = dynamic(
+  () => import('@/components/customers/dialogs/customer-dialog').then(mod => mod.CustomerDialog),
+  {
+    ssr: false,
+  }
+)
 
 // Skeleton loader para a lista de clientes
 function CustomerListSkeleton() {
@@ -35,7 +41,7 @@ function CustomerListSkeleton() {
 }
 
 export default function CustomersPage() {
-  const { customers, isLoading, actions } = useCustomerStore()
+  const { customers, loading, actions } = useCustomerStore()
   const router = useRouter()
 
   useEffect(() => {
@@ -55,17 +61,17 @@ export default function CustomersPage() {
   }
 
   const formatBirthDate = (date: string | null | undefined) => {
-    if (!date) return undefined;
+    if (!date) return undefined
     try {
       // Se a data já estiver no formato DD/MM/YYYY, retorna como está
       if (date.includes('/')) {
-        return date;
+        return date
       }
       // Se estiver no formato YYYY-MM-DD, converte para DD/MM/YYYY
-      const parsedDate = parse(date, 'yyyy-MM-dd', new Date());
-      return format(parsedDate, 'dd/MM/yyyy', { locale: ptBR });
+      const parsedDate = parse(date, 'yyyy-MM-dd', new Date())
+      return format(parsedDate, 'dd/MM/yyyy', { locale: ptBR })
     } catch {
-      return date;
+      return date
     }
   }
 
@@ -74,15 +80,13 @@ export default function CustomersPage() {
     router.push(`/customers/${id}`)
   }
 
-  if (isLoading) {
+  if (loading) {
     return (
       <AppLayout>
         <div className="flex flex-col gap-4 p-4 md:gap-6 lg:gap-8 md:p-6 lg:p-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <h1 className="text-3xl font-semibold font-heading text-heading">
-                Clientes
-              </h1>
+              <h1 className="text-3xl font-semibold font-heading text-heading">Clientes</h1>
               <p className="text-sm text-muted-foreground">
                 Gerencie seus clientes e histórico de atendimentos
               </p>
@@ -104,7 +108,7 @@ export default function CustomersPage() {
               Gerencie seus clientes e histórico de atendimentos
             </p>
           </div>
-          
+
           {/* Desktop New Customer Button */}
           <div className="hidden sm:block">
             <CustomerDialog
@@ -115,7 +119,7 @@ export default function CustomersPage() {
                 </Button>
               }
               onSubmit={handleCreateCustomer}
-              isLoading={isLoading}
+              isLoading={loading}
             />
           </div>
         </div>
@@ -126,7 +130,7 @@ export default function CustomersPage() {
             customers={customers}
             onUpdate={handleUpdateCustomer}
             onDelete={handleDeleteCustomer}
-            isLoading={isLoading}
+            isLoading={loading}
           />
         </Suspense>
 
@@ -134,24 +138,18 @@ export default function CustomersPage() {
         <div className="fixed right-4 bottom-4 sm:hidden">
           <CustomerDialog
             trigger={
-              <Button 
-                size="icon" 
+              <Button
+                size="icon"
                 className="h-14 w-14 rounded-full bg-terracotta hover:bg-terracotta/90 text-white shadow-lg hover:shadow-xl transition-all"
               >
                 <Plus className="h-6 w-6" />
               </Button>
             }
             onSubmit={handleCreateCustomer}
-            isLoading={isLoading}
+            isLoading={loading}
           />
         </div>
-
-        {customers.length === 0 && !isLoading && (
-          <div className="text-center py-6 text-muted-foreground">
-            Nenhum cliente cadastrado
-          </div>
-        )}
       </div>
     </AppLayout>
   )
-} 
+}

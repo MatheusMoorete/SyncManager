@@ -1,5 +1,7 @@
-import { Filter, ArrowUpDown } from "lucide-react"
-import { Button } from "@/components/ui/button"
+'use client'
+
+import { Filter, ArrowUpDown } from 'lucide-react'
+import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -7,14 +9,14 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
   DropdownMenuCheckboxItem,
-} from "@/components/ui/dropdown-menu"
+} from '@/components/ui/dropdown-menu'
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select"
+} from '@/components/ui/select'
 
 interface FilterSortMenuProps {
   // Filter props
@@ -48,13 +50,17 @@ export function FilterSortMenu({
       {filterOptions && (
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-2 bg-white hover:bg-neutral-cream/50 rounded-lg h-10 px-4">
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 bg-white hover:bg-neutral-cream/50 rounded-lg h-10 px-4"
+            >
               <Filter className="h-4 w-4" />
               <span className="hidden md:inline">Filtros</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-[200px]">
-            {filterOptions.map((option) => (
+            {filterOptions.map(option => (
               <DropdownMenuCheckboxItem
                 key={option.value}
                 checked={option.checked}
@@ -70,7 +76,11 @@ export function FilterSortMenu({
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm" className="gap-2 bg-white hover:bg-neutral-cream/50 rounded-lg h-10 px-4">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 bg-white hover:bg-neutral-cream/50 rounded-lg h-10 px-4"
+          >
             <ArrowUpDown className="h-4 w-4" />
             <span className="hidden md:inline">Ordenar</span>
           </Button>
@@ -82,7 +92,7 @@ export function FilterSortMenu({
                 <SelectValue placeholder="Ordenar por" />
               </SelectTrigger>
               <SelectContent>
-                {sortOptions.map((option) => (
+                {sortOptions.map(option => (
                   <SelectItem key={option.value} value={option.value}>
                     {option.label}
                   </SelectItem>
@@ -101,4 +111,4 @@ export function FilterSortMenu({
       </DropdownMenu>
     </div>
   )
-} 
+}
