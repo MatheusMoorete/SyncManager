@@ -10,11 +10,34 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: 'Brow Studio',
-  description: 'Sistema de Gestão para Estúdio de Sobrancelhas',
+  title: 'Sync Manager',
+  description: 'Sistema de Gestão',
   icons: {
-    icon: '/favicon.ico',
-    shortcut: '/favicon.ico',
+    icon: [
+      { url: '/favicon.ico' },
+      { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
+      { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
+    ],
+    apple: {
+      url: '/apple-touch-icon.png',
+      type: 'image/png',
+    },
+  },
+  manifest: '/site.webmanifest',
+  viewport: 'width=device-width, initial-scale=1.0',
+  themeColor: '#ffffff',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Sync Manager',
+  },
+  applicationName: 'Sync Manager',
+  formatDetection: {
+    telephone: true,
+    date: true,
+    address: true,
+    email: true,
+    url: true,
   },
 }
 

@@ -1,25 +1,29 @@
-# Brow Studio Web
+# Sync Manager Web
 
 Sistema de Gestão para Estúdio de Sobrancelhas desenvolvido com Next.js 14+.
 
 ## Stack Tecnológica
 
 ### Frontend Core
+
 - Next.js 14+ (App Router, Server Components, Server Actions)
 - TypeScript 5+ (Strict Mode)
 - Tailwind CSS (JIT mode, Dark mode)
 - Shadcn/ui (Componentes base)
 
 ### State Management & Forms
+
 - Zustand: Estado global
 - React Query (TanStack Query): Cache e data fetching
 - React Hook Form: Gerenciamento de formulários
 - Zod: Validação de schemas
 
 ### Backend/Database
+
 - Supabase (Auth, Database, Storage, Edge Functions)
 
 ### Testing
+
 - Jest: Unit tests
 - Testing Library: Component tests
 - Cypress: E2E tests
@@ -27,6 +31,7 @@ Sistema de Gestão para Estúdio de Sobrancelhas desenvolvido com Next.js 14+.
 - Vitest: Unit tests rápidos
 
 ### Qualidade de Código
+
 - ESLint: Linting customizado
 - Prettier: Formatação de código
 - Husky: Git hooks
@@ -76,7 +81,7 @@ npm run dev
 │   ├── app/                 # App Router pages
 │   │   ├── (auth)/         # Rotas autenticadas
 │   │   └── api/            # API routes
-│   ├── components/         
+│   ├── components/
 │   │   ├── ui/             # Componentes base (shadcn)
 │   │   ├── forms/          # Componentes de formulário
 │   │   ├── layout/         # Componentes de layout
