@@ -7,9 +7,11 @@ import { format, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { toast } from 'sonner'
 import { useCustomerStore } from '@/store/customer-store'
+import { useScheduleStore } from '@/store/schedule-store'
 import { AppLayout } from '@/components/layout/app-layout'
 import { CustomerFormValues } from '@/types/customer'
 import { cn } from '@/lib/utils'
+import { Appointment } from '@/types/schedule'
 
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -18,10 +20,11 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Separator } from '@/components/ui/separator'
 
-export default function CustomerDetailsPage({ params }: { params: Promise<{ id: string }> }) {
+export default function CustomerDetailsPage({ params }: { params: { id: string } }) {
   const router = useRouter()
   const [isEditing, setIsEditing] = useState(false)
-  const { selectedCustomer: customer, isLoading, actions } = useCustomerStore()
+  const { selectedCustomer: customer, loading, actions } = useCustomerStore()
+  const { appointments, actions: scheduleActions } = useScheduleStore()
 
   // Função para ajustar altura do textarea
   const adjustTextareaHeight = (element: HTMLTextAreaElement) => {
@@ -39,25 +42,22 @@ export default function CustomerDetailsPage({ params }: { params: Promise<{ id: 
 
   // Efeito para carregar os dados do cliente
   useEffect(() => {
-    const fetchData = async () => {
-      const resolvedParams = await params
-      if (resolvedParams.id) {
-        await actions.fetchCustomer(resolvedParams.id)
-      }
+    if (params.id) {
+      actions.fetchCustomer(params.id)
+      scheduleActions.updateFilters({ clientId: params.id })
+      scheduleActions.fetchAppointments()
     }
-    fetchData()
-  }, [params, actions])
+  }, [params.id, actions, scheduleActions])
 
-  if (isLoading || !customer) {
+  if (loading || !customer) {
     return (
       <AppLayout>
-        <div className="flex flex-col min-h-screen bg-white">
-          <div className="p-4 md:p-6 lg:p-8">
-            <div className="animate-pulse space-y-4">
-              <div className="h-8 w-48 bg-neutral-cream/30 rounded" />
-              <div className="h-4 w-32 bg-neutral-cream/30 rounded" />
-              <div className="h-32 bg-neutral-cream/30 rounded" />
-            </div>
+        <div className="animate-pulse">
+          <div className="h-32 bg-neutral-cream/20 rounded-lg mb-4" />
+          <div className="space-y-4">
+            <div className="h-24 bg-neutral-cream/20 rounded-lg" />
+            <div className="h-24 bg-neutral-cream/20 rounded-lg" />
+            <div className="h-24 bg-neutral-cream/20 rounded-lg" />
           </div>
         </div>
       </AppLayout>
@@ -88,11 +88,7 @@ export default function CustomerDetailsPage({ params }: { params: Promise<{ id: 
                 <Star className="h-3 w-3 text-terracotta" />
                 <span className="text-xs font-medium">{customer.points}</span>
               </div>
-              <Button 
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsEditing(!isEditing)}
-              >
+              <Button variant="ghost" size="sm" onClick={() => setIsEditing(!isEditing)}>
                 {isEditing ? <Save className="h-5 w-5" /> : <Edit className="h-5 w-5" />}
               </Button>
             </div>
@@ -110,7 +106,7 @@ export default function CustomerDetailsPage({ params }: { params: Promise<{ id: 
             <div>
               <h1 className="text-xl font-bold text-charcoal">{customer.full_name}</h1>
               <p className="text-sm text-charcoal/60">
-                Cliente desde {format(new Date(customer.created_at!), 'MMM yyyy', { locale: ptBR })}
+                Cliente desde {format(customer.createdAt.toDate(), 'MMM yyyy', { locale: ptBR })}
               </p>
             </div>
           </div>
@@ -132,7 +128,10 @@ export default function CustomerDetailsPage({ params }: { params: Promise<{ id: 
               </div>
               <div>
                 <h1 className="text-xl font-bold text-charcoal">{customer.full_name}</h1>
-                <p className="text-sm text-charcoal/60">Cliente desde {format(new Date(customer.created_at!), 'dd/MM/yyyy', { locale: ptBR })}</p>
+                <p className="text-sm text-charcoal/60">
+                  Cliente desde{' '}
+                  {format(customer.createdAt.toDate(), 'dd/MM/yyyy', { locale: ptBR })}
+                </p>
               </div>
             </div>
           </div>
@@ -141,11 +140,7 @@ export default function CustomerDetailsPage({ params }: { params: Promise<{ id: 
               <Star className="h-4 w-4 text-terracotta" />
               <span className="text-sm font-medium">{customer.points} pontos</span>
             </div>
-            <Button 
-              variant="outline"
-              onClick={() => setIsEditing(!isEditing)}
-              className="gap-2"
-            >
+            <Button variant="outline" onClick={() => setIsEditing(!isEditing)} className="gap-2">
               {isEditing ? (
                 <>
                   <Save className="h-4 w-4" />
@@ -165,19 +160,19 @@ export default function CustomerDetailsPage({ params }: { params: Promise<{ id: 
         <Tabs defaultValue="info" className="flex-1">
           <div className="border-b border-charcoal/5">
             <TabsList className="w-full rounded-none bg-transparent p-0 md:w-auto md:rounded-md md:bg-neutral-cream/30 md:p-1">
-              <TabsTrigger 
-                value="info" 
+              <TabsTrigger
+                value="info"
                 className="flex-1 data-[state=active]:border-b-2 data-[state=active]:border-terracotta data-[state=active]:bg-transparent data-[state=active]:shadow-none md:flex-none md:data-[state=active]:bg-white md:data-[state=active]:shadow-sm"
               >
                 Informações
               </TabsTrigger>
-              <TabsTrigger 
+              <TabsTrigger
                 value="history"
                 className="flex-1 data-[state=active]:border-b-2 data-[state=active]:border-terracotta data-[state=active]:bg-transparent data-[state=active]:shadow-none md:flex-none md:data-[state=active]:bg-white md:data-[state=active]:shadow-sm"
               >
                 Histórico
               </TabsTrigger>
-              <TabsTrigger 
+              <TabsTrigger
                 value="preferences"
                 className="flex-1 data-[state=active]:border-b-2 data-[state=active]:border-terracotta data-[state=active]:bg-transparent data-[state=active]:shadow-none md:flex-none md:data-[state=active]:bg-white md:data-[state=active]:shadow-sm"
               >
@@ -222,7 +217,9 @@ export default function CustomerDetailsPage({ params }: { params: Promise<{ id: 
                         <div className="text-left">
                           <p className="text-xs text-charcoal/60">Aniversário</p>
                           <p className="text-sm font-medium">
-                            {format(new Date(customer.birth_date), 'dd/MM/yyyy', { locale: ptBR })}
+                            {format(new Date(customer.birth_date!), 'dd/MM/yyyy', {
+                              locale: ptBR,
+                            })}
                           </p>
                         </div>
                       </div>
@@ -236,7 +233,9 @@ export default function CustomerDetailsPage({ params }: { params: Promise<{ id: 
                   <Textarea
                     value={customer.notes || ''}
                     readOnly={!isEditing}
-                    placeholder={isEditing ? "Adicione observações sobre o cliente..." : "Sem observações"}
+                    placeholder={
+                      isEditing ? 'Adicione observações sobre o cliente...' : 'Sem observações'
+                    }
                     className="min-h-[120px] bg-neutral-cream/10"
                   />
                 </div>
@@ -270,7 +269,9 @@ export default function CustomerDetailsPage({ params }: { params: Promise<{ id: 
                               <Calendar className="h-4 w-4 text-charcoal/60" />
                             </div>
                             <span className="text-sm text-charcoal">
-                              {format(new Date(customer.birth_date), 'dd/MM/yyyy', { locale: ptBR })}
+                              {format(new Date(customer.birth_date!), 'dd/MM/yyyy', {
+                                locale: ptBR,
+                              })}
                             </span>
                           </div>
                         )}
@@ -284,7 +285,11 @@ export default function CustomerDetailsPage({ params }: { params: Promise<{ id: 
                         <Textarea
                           value={customer.notes || ''}
                           readOnly={!isEditing}
-                          placeholder={isEditing ? "Adicione observações sobre o cliente..." : "Sem observações"}
+                          placeholder={
+                            isEditing
+                              ? 'Adicione observações sobre o cliente...'
+                              : 'Sem observações'
+                          }
                           className="w-full min-h-[120px] max-h-[240px] resize-none bg-white/80 border-charcoal/10 focus:border-charcoal/20 focus:ring-1 focus:ring-charcoal/20 shadow-sm [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-charcoal/20 hover:[&::-webkit-scrollbar-thumb]:bg-charcoal/30 focus:[&::-webkit-scrollbar-thumb]:bg-charcoal/30"
                         />
                       </div>
@@ -298,30 +303,16 @@ export default function CustomerDetailsPage({ params }: { params: Promise<{ id: 
               {/* Versão Mobile do Histórico */}
               <div className="md:hidden space-y-4">
                 <div className="space-y-4">
-                  {customer.appointments?.map((appointment) => (
+                  {appointments.map((appointment: Appointment) => (
                     <Card key={appointment.id} className="p-4">
                       <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-sm">
-                              {format(parseISO(appointment.scheduled_time), "PPP 'às' HH:mm", { locale: ptBR })}
-                            </span>
-                          </div>
-                          <div className={cn(
-                            'px-2.5 py-0.5 rounded-full text-xs font-semibold',
-                            {
-                              'bg-emerald-100 text-emerald-800': appointment.status === 'scheduled',
-                              'bg-green-100 text-green-800': appointment.status === 'completed',
-                              'bg-rose-100 text-rose-800': appointment.status === 'canceled',
-                              'bg-slate-100 text-slate-800': appointment.status === 'no_show'
-                            }
-                          )}>
-                            {appointment.status === 'scheduled' && 'Agendado'}
-                            {appointment.status === 'completed' && 'Concluído'}
-                            {appointment.status === 'canceled' && 'Cancelado'}
-                            {appointment.status === 'no_show' && 'Não Compareceu'}
-                          </div>
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-sm">
+                            {format(parseISO(appointment.scheduled_time), "PPP 'às' HH:mm", {
+                              locale: ptBR,
+                            })}
+                          </span>
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="text-sm">{appointment.service.name}</span>
@@ -332,6 +323,19 @@ export default function CustomerDetailsPage({ params }: { params: Promise<{ id: 
                           <p className="text-sm text-muted-foreground mt-2">{appointment.notes}</p>
                         )}
                       </div>
+                      <div
+                        className={cn('px-2.5 py-0.5 rounded-full text-xs font-semibold', {
+                          'bg-emerald-100 text-emerald-800': appointment.status === 'scheduled',
+                          'bg-green-100 text-green-800': appointment.status === 'completed',
+                          'bg-rose-100 text-rose-800': appointment.status === 'canceled',
+                          'bg-slate-100 text-slate-800': appointment.status === 'no_show',
+                        })}
+                      >
+                        {appointment.status === 'scheduled' && 'Agendado'}
+                        {appointment.status === 'completed' && 'Concluído'}
+                        {appointment.status === 'canceled' && 'Cancelado'}
+                        {appointment.status === 'no_show' && 'Não compareceu'}
+                      </div>
                     </Card>
                   ))}
                 </div>
@@ -340,40 +344,47 @@ export default function CustomerDetailsPage({ params }: { params: Promise<{ id: 
               {/* Desktop History */}
               <div className="hidden md:block">
                 <Card className="p-6 shadow-lg bg-white/95 backdrop-blur-sm border border-charcoal/10 hover:border-charcoal/20 transition-all duration-200">
-                  <h2 className="text-lg font-semibold text-charcoal mb-4">Histórico de Atendimentos</h2>
+                  <h2 className="text-lg font-semibold text-charcoal mb-4">
+                    Histórico de Atendimentos
+                  </h2>
                   <div className="space-y-4">
-                    {customer.appointments?.map((appointment) => (
+                    {appointments.map((appointment: Appointment) => (
                       <Card key={appointment.id} className="p-4">
                         <div className="flex items-start justify-between">
                           <div className="space-y-2">
                             <div className="flex items-center gap-2">
                               <Calendar className="h-4 w-4 text-muted-foreground" />
                               <span className="text-sm">
-                                {format(parseISO(appointment.scheduled_time), "PPP 'às' HH:mm", { locale: ptBR })}
+                                {format(parseISO(appointment.scheduled_time), "PPP 'às' HH:mm", {
+                                  locale: ptBR,
+                                })}
                               </span>
                             </div>
                             <div className="flex items-center gap-2">
                               <span className="text-sm">{appointment.service.name}</span>
                               <span className="text-sm text-muted-foreground">•</span>
-                              <span className="text-sm">R$ {appointment.final_price.toFixed(2)}</span>
+                              <span className="text-sm">
+                                R$ {appointment.final_price.toFixed(2)}
+                              </span>
                             </div>
                             {appointment.notes && (
-                              <p className="text-sm text-muted-foreground mt-2">{appointment.notes}</p>
+                              <p className="text-sm text-muted-foreground mt-2">
+                                {appointment.notes}
+                              </p>
                             )}
                           </div>
-                          <div className={cn(
-                            'px-2.5 py-0.5 rounded-full text-xs font-semibold',
-                            {
+                          <div
+                            className={cn('px-2.5 py-0.5 rounded-full text-xs font-semibold', {
                               'bg-emerald-100 text-emerald-800': appointment.status === 'scheduled',
                               'bg-green-100 text-green-800': appointment.status === 'completed',
                               'bg-rose-100 text-rose-800': appointment.status === 'canceled',
-                              'bg-slate-100 text-slate-800': appointment.status === 'no_show'
-                            }
-                          )}>
+                              'bg-slate-100 text-slate-800': appointment.status === 'no_show',
+                            })}
+                          >
                             {appointment.status === 'scheduled' && 'Agendado'}
                             {appointment.status === 'completed' && 'Concluído'}
                             {appointment.status === 'canceled' && 'Cancelado'}
-                            {appointment.status === 'no_show' && 'Não Compareceu'}
+                            {appointment.status === 'no_show' && 'Não compareceu'}
                           </div>
                         </div>
                       </Card>
@@ -394,7 +405,9 @@ export default function CustomerDetailsPage({ params }: { params: Promise<{ id: 
               {/* Desktop Preferences (mantido como estava) */}
               <div className="hidden md:block">
                 <Card className="p-6 shadow-lg bg-white/95 backdrop-blur-sm border border-charcoal/10 hover:border-charcoal/20 transition-all duration-200">
-                  <h2 className="text-lg font-semibold text-charcoal mb-4">Preferências do Cliente</h2>
+                  <h2 className="text-lg font-semibold text-charcoal mb-4">
+                    Preferências do Cliente
+                  </h2>
                   {/* Implementar preferências do cliente */}
                   <div className="text-sm text-charcoal/60">
                     Preferências do cliente serão implementadas em breve.
@@ -407,4 +420,4 @@ export default function CustomerDetailsPage({ params }: { params: Promise<{ id: 
       </div>
     </AppLayout>
   )
-} 
+}
