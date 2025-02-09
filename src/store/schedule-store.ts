@@ -200,21 +200,23 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
               id: docSnapshot.id,
               client_id: appointmentData.client_id,
               service_id: appointmentData.service_id,
-              scheduled_time: appointmentData.scheduled_time.toDate().toISOString(),
+              scheduled_time:
+                appointmentData.scheduled_time?.toDate()?.toISOString() || new Date().toISOString(),
               actual_duration: appointmentData.actual_duration || null,
-              final_price: appointmentData.final_price.toString(),
-              status: appointmentData.status,
+              final_price: appointmentData.final_price?.toString() || '0',
+              status: appointmentData.status || 'scheduled',
               notes: appointmentData.notes || null,
               discount: appointmentData.discount || null,
-              createdAt: appointmentData.createdAt.toDate().toISOString(),
+              createdAt:
+                appointmentData.createdAt?.toDate()?.toISOString() || new Date().toISOString(),
               client: {
-                full_name: clientData.full_name,
-                phone: clientData.phone,
+                full_name: clientData.full_name || '',
+                phone: clientData.phone || '',
               },
               service: {
-                name: serviceData.name,
-                duration: serviceData.duration,
-                base_price: serviceData.price.toString(),
+                name: serviceData.name || '',
+                duration: serviceData.duration || 0,
+                base_price: (serviceData.price || 0).toString(),
               },
             } as Appointment)
           }

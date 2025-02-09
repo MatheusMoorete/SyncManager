@@ -81,19 +81,9 @@ const managementNavItems = [
  */
 const systemNavItems = [
   {
-    title: 'Usuários',
-    href: '/users',
-    icon: UserCircle,
-  },
-  {
     title: 'Sistema de Fidelidade',
     href: '/configuracoes/fidelidade',
     icon: Star,
-  },
-  {
-    title: 'Configurações',
-    href: '/settings',
-    icon: Settings,
   },
 ]
 
