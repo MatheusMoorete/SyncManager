@@ -43,7 +43,7 @@ import {
 
 export default function LoyaltySettingsPage() {
   const { services } = useServiceStore()
-  const { config, isLoading, actions } = useLoyaltyStore()
+  const { config, loading, actions } = useLoyaltyStore()
   const [isSaving, setIsSaving] = useState(false)
   const [showConfirmDialog, setShowConfirmDialog] = useState(false)
   const [pendingSettings, setPendingSettings] = useState<any>(null)
@@ -148,7 +148,7 @@ export default function LoyaltySettingsPage() {
     }))
   }
 
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
