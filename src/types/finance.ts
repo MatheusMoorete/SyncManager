@@ -1,3 +1,5 @@
+import { Timestamp } from 'firebase/firestore'
+
 export type TransactionType = 'receita' | 'despesa'
 
 export interface Transaction {
@@ -12,11 +14,14 @@ export interface Transaction {
 }
 
 export interface TransactionFormValues {
-  description: string
-  amount: number
-  type: TransactionType
+  type: 'income' | 'expense'
   category: string
-  date: string
+  amount: number
+  paymentMethod: 'cash' | 'credit_card' | 'debit_card' | 'pix' | null
+  clientId: string | null
+  notes: string | null
+  receiptUrl: string | null
+  transactionDate: Timestamp
 }
 
 export interface FinanceStats {

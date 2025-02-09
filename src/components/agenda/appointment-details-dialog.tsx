@@ -167,13 +167,13 @@ export function AppointmentDetailsDialog({
     try {
       setloading(true)
       await scheduleActions.deleteAppointment(appointment!.id)
+      setShowDeleteAlert(false)
       onOpenChange(false)
     } catch (error) {
       console.error('Error deleting appointment:', error)
       toast.error('Erro ao excluir agendamento')
     } finally {
       setloading(false)
-      setShowDeleteAlert(false)
     }
   }
 
@@ -254,7 +254,7 @@ export function AppointmentDetailsDialog({
                   <div className="flex items-center gap-3 mt-0.5 text-sm text-muted-foreground">
                     <p>Duração: {appointment.actual_duration || appointment.service.duration}</p>
                     <span>•</span>
-                    <p>Valor: R$ {appointment.final_price.toFixed(2)}</p>
+                    <p>Valor: R$ {Number(appointment.final_price).toFixed(2)}</p>
                   </div>
                 </>
               )}

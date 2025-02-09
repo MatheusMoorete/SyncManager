@@ -263,10 +263,8 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
         }))
 
         await get().actions.calculateStats()
-        toast.success('Transação adicionada com sucesso!')
       } catch (error) {
         console.error('Erro ao adicionar transação:', error)
-        toast.error('Erro ao adicionar transação')
         throw error
       } finally {
         set({ loading: false })
@@ -294,10 +292,8 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
         }))
 
         await get().actions.calculateStats()
-        toast.success('Despesa adicionada com sucesso!')
       } catch (error) {
         console.error('Erro ao adicionar despesa:', error)
-        toast.error('Erro ao adicionar despesa')
         throw error
       } finally {
         set({ loading: false })
@@ -322,33 +318,28 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
         }))
 
         await get().actions.calculateStats()
-        toast.success('Transação atualizada com sucesso!')
       } catch (error) {
         console.error('Erro ao atualizar transação:', error)
-        toast.error('Erro ao atualizar transação')
         throw error
       } finally {
         set({ loading: false })
       }
     },
 
-    deleteTransaction: async id => {
+    deleteTransaction: async (id: string) => {
       const { user } = useAuthStore.getState()
       if (!user) throw new Error('Usuário não autenticado')
 
-      set({ loading: true, error: null })
       try {
+        set({ loading: true })
+
         await deleteDoc(doc(db, 'transactions', id))
 
         set(state => ({
           transactions: state.transactions.filter(t => t.id !== id),
         }))
-
-        await get().actions.calculateStats()
-        toast.success('Transação excluída com sucesso!')
       } catch (error) {
-        console.error('Erro ao excluir transação:', error)
-        toast.error('Erro ao excluir transação')
+        console.error('Error deleting transaction:', error)
         throw error
       } finally {
         set({ loading: false })
@@ -368,10 +359,8 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
         }))
 
         await get().actions.calculateStats()
-        toast.success('Despesa excluída com sucesso!')
       } catch (error) {
         console.error('Erro ao excluir despesa:', error)
-        toast.error('Erro ao excluir despesa')
         throw error
       } finally {
         set({ loading: false })

@@ -426,7 +426,7 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
         toast.success('Agendamento excluído com sucesso!')
       } catch (error) {
         console.error('Error deleting appointment:', error)
-        toast.error('Erro ao excluir agendamento')
+        throw error
       } finally {
         set({ loading: false })
       }
@@ -494,48 +494,76 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
       duration: string,
       currentAppointmentId?: string
     ) => {
-      const { appointments, businessHours } = get()
+      console.log('=== Iniciando verificação de disponibilidade ===')
+      console.log('Data:', date)
+      console.log('Horário:', time)
+      console.log('Duração:', duration)
+      console.log('ID do agendamento atual (se editando):', currentAppointmentId)
 
-      // Verificar se é um dia de funcionamento
-      const dayOfWeek = date.getDay()
-      if (businessHours.daysOff.includes(dayOfWeek)) {
-        return false
-      }
+      const { appointments } = get()
 
       // Verificar se está dentro do horário de funcionamento
-      const [hours, minutes] = duration.split(':').map(Number)
-      const durationInMinutes = hours * 60 + minutes
+      const [hours, minutes] = time.split(':').map(Number)
+      const [durationHours, durationMinutes] = duration.split(':').map(Number)
+      const durationInMinutes = (durationHours || 0) * 60 + (durationMinutes || 0)
 
-      const appointmentStart = parse(time, 'HH:mm', date)
-      const appointmentEnd = addDays(appointmentStart, 0)
+      console.log('Duração em minutos:', durationInMinutes)
+
+      // Criar data do novo agendamento
+      const appointmentStart = new Date(date)
+      appointmentStart.setHours(hours, minutes, 0, 0)
+
+      const appointmentEnd = new Date(appointmentStart)
       appointmentEnd.setMinutes(appointmentEnd.getMinutes() + durationInMinutes)
 
-      const businessStart = parse(businessHours.start, 'HH:mm', date)
-      const businessEnd = parse(businessHours.end, 'HH:mm', date)
-
-      if (appointmentStart < businessStart || appointmentEnd > businessEnd) {
-        return false
-      }
+      console.log('Início do agendamento:', appointmentStart)
+      console.log('Fim do agendamento:', appointmentEnd)
+      console.log('Total de agendamentos existentes:', appointments.length)
 
       // Verificar conflitos com outros agendamentos
       const hasConflict = appointments.some(appointment => {
+        // Ignorar o próprio agendamento em caso de edição
         if (currentAppointmentId && appointment.id === currentAppointmentId) {
+          console.log('Ignorando agendamento atual:', appointment.id)
           return false
         }
 
-        const existingStart = appointment.scheduled_time
-        const existingEnd = addDays(existingStart, 0)
-        existingEnd.setMinutes(
-          existingEnd.getMinutes() +
-            parseInt(appointment.service.duration.split(':')[0]) * 60 +
-            parseInt(appointment.service.duration.split(':')[1])
-        )
+        // Converter string ISO para objeto Date
+        const existingStart = new Date(appointment.scheduled_time)
+        const existingEnd = new Date(existingStart)
 
-        return areIntervalsOverlapping(
-          { start: appointmentStart, end: appointmentEnd },
-          { start: existingStart, end: existingEnd }
-        )
+        // Calcular duração do agendamento existente
+        const serviceDuration = appointment.service.duration
+        const durationInMinutes =
+          typeof serviceDuration === 'string'
+            ? serviceDuration.split(':').reduce((acc, curr) => acc * 60 + parseInt(curr), 0)
+            : serviceDuration // se for número, usa direto
+
+        existingEnd.setMinutes(existingStart.getMinutes() + durationInMinutes)
+
+        console.log('\nVerificando conflito com agendamento:', {
+          id: appointment.id,
+          inicio: existingStart.toLocaleString(),
+          fim: existingEnd.toLocaleString(),
+          duracao: durationInMinutes,
+          serviceDuration,
+        })
+
+        // Verificar sobreposição
+        const conflict =
+          (appointmentStart >= existingStart && appointmentStart < existingEnd) ||
+          (appointmentEnd > existingStart && appointmentEnd <= existingEnd) ||
+          (appointmentStart <= existingStart && appointmentEnd >= existingEnd)
+
+        if (conflict) {
+          console.log('CONFLITO ENCONTRADO com o agendamento:', appointment.id)
+        }
+
+        return conflict
       })
+
+      console.log('Resultado final - Tem conflito?', hasConflict)
+      console.log('=== Fim da verificação ===\n')
 
       return !hasConflict
     },

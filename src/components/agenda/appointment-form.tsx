@@ -104,32 +104,36 @@ export function AppointmentForm({ appointment, onSuccess }: AppointmentFormProps
 
   // Validar horário
   const validateTime = (time: string): boolean => {
-    if (!businessHours) return false
+    if (!businessHours) return true // Se não há configuração de horário, permite qualquer horário
 
     // Formato HH:mm
     const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/
     if (!timeRegex.test(time)) return false
 
     const [hours, minutes] = time.split(':').map(Number)
-    const [startHour, startMinute] = businessHours.starttime.split(':').map(Number)
-    const [endHour, endMinute] = businessHours.endtime.split(':').map(Number)
 
-    // Verificar se está dentro do horário de expediente
-    const timeInMinutes = hours * 60 + minutes
-    const startInMinutes = startHour * 60 + startMinute
-    const endInMinutes = endHour * 60 + endMinute
+    // Se há configuração de horário de expediente, valida
+    if (businessHours.starttime && businessHours.endtime) {
+      const [startHour, startMinute] = businessHours.starttime.split(':').map(Number)
+      const [endHour, endMinute] = businessHours.endtime.split(':').map(Number)
 
-    if (timeInMinutes < startInMinutes || timeInMinutes >= endInMinutes) {
-      return false
+      const timeInMinutes = hours * 60 + minutes
+      const startInMinutes = startHour * 60 + startMinute
+      const endInMinutes = endHour * 60 + endMinute
+
+      if (timeInMinutes < startInMinutes || timeInMinutes >= endInMinutes) {
+        return false
+      }
     }
 
-    // Verificar se não é horário de almoço
+    // Verificar se não é horário de almoço (se configurado)
     if (businessHours.lunchbreak) {
       const [lunchStartHour, lunchStartMinute] = businessHours.lunchbreak.start
         .split(':')
         .map(Number)
       const [lunchEndHour, lunchEndMinute] = businessHours.lunchbreak.end.split(':').map(Number)
 
+      const timeInMinutes = hours * 60 + minutes
       const lunchStartInMinutes = lunchStartHour * 60 + lunchStartMinute
       const lunchEndInMinutes = lunchEndHour * 60 + lunchEndMinute
 
@@ -138,10 +142,12 @@ export function AppointmentForm({ appointment, onSuccess }: AppointmentFormProps
       }
     }
 
-    // Verificar se não é dia de folga
-    const selectedDay = selectedDate.getDay()
-    if (businessHours.daysoff.includes(selectedDay)) {
-      return false
+    // Verificar se não é dia de folga (se configurado)
+    if (businessHours.daysoff && businessHours.daysoff.length > 0) {
+      const selectedDay = selectedDate.getDay()
+      if (businessHours.daysoff.includes(selectedDay)) {
+        return false
+      }
     }
 
     return true
@@ -204,15 +210,14 @@ export function AppointmentForm({ appointment, onSuccess }: AppointmentFormProps
       }
 
       if (!validateTime(selectedTime)) {
-        const formattedStart = businessHours?.starttime || '09:00'
-        const formattedEnd = businessHours?.endtime || '18:00'
-        const lunchBreak = businessHours?.lunchbreak
-          ? ` (exceto ${businessHours.lunchbreak.start} - ${businessHours.lunchbreak.end})`
-          : ''
-
-        toast.error(
-          `Horário inválido. Escolha um horário entre ${formattedStart} e ${formattedEnd}${lunchBreak}`
-        )
+        let errorMessage = 'Horário inválido.'
+        if (businessHours?.starttime && businessHours?.endtime) {
+          errorMessage += ` Escolha um horário entre ${businessHours.starttime} e ${businessHours.endtime}`
+          if (businessHours.lunchbreak) {
+            errorMessage += ` (exceto ${businessHours.lunchbreak.start} - ${businessHours.lunchbreak.end})`
+          }
+        }
+        toast.error(errorMessage)
         return
       }
 
@@ -398,14 +403,23 @@ export function AppointmentForm({ appointment, onSuccess }: AppointmentFormProps
               <Input
                 type="time"
                 value={selectedTime}
-                onChange={e => {
+                onChange={e => setSelectedTime(e.target.value)}
+                onBlur={e => {
                   const time = e.target.value
-                  if (validateTime(time)) {
-                    setSelectedTime(time)
+                  if (!time) return // Não validar se estiver vazio
+
+                  if (!validateTime(time)) {
+                    let errorMessage = 'Horário inválido.'
+                    if (businessHours?.starttime && businessHours?.endtime) {
+                      errorMessage += ` Escolha um horário entre ${businessHours.starttime} e ${businessHours.endtime}`
+                      if (businessHours.lunchbreak) {
+                        errorMessage += ` (exceto ${businessHours.lunchbreak.start} - ${businessHours.lunchbreak.end})`
+                      }
+                    }
+                    toast.error(errorMessage)
+                    setSelectedTime('')
                   }
                 }}
-                min="09:00"
-                max="18:00"
                 step="900" // 15 minutos
               />
             </div>

@@ -48,39 +48,72 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { type TransactionFormValues } from '@/types/finance'
 
 export default function FinancePage() {
-  const { transactions, stats, loading, error, actions } = useFinanceStore()
+  const { transactions, stats, loading: storeLoading, error, actions } = useFinanceStore()
   const [transactionToEdit, setTransactionToEdit] = useState<Transaction | null>(null)
   const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null)
+  const [showDeleteAlert, setShowDeleteAlert] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
     actions.fetchTransactions()
     actions.fetchExpenses()
   }, [actions])
 
-  const handleEditTransaction = (transaction: Transaction) => {
+  const handleEditClick = (transaction: Transaction) => {
     setTransactionToEdit(transaction)
   }
 
   const handleDeleteTransaction = (transaction: Transaction) => {
     setTransactionToDelete(transaction)
+    setShowDeleteAlert(true)
   }
 
   const confirmDelete = async () => {
-    if (!transactionToDelete) return
-
     try {
-      await actions.deleteTransaction(transactionToDelete.id)
-      toast.success('Transação excluída com sucesso')
+      setIsSubmitting(true)
+      await actions.deleteTransaction(transactionToDelete!.id)
+      setTransactionToDelete(null)
+      setShowDeleteAlert(false)
+      toast.success('Transação excluída com sucesso!')
     } catch (error) {
+      console.error('Error deleting transaction:', error)
       toast.error('Erro ao excluir transação')
     } finally {
-      setTransactionToDelete(null)
+      setIsSubmitting(false)
     }
   }
 
-  if (loading) {
+  const handleEditSubmit = async (data: TransactionFormValues) => {
+    try {
+      setIsSubmitting(true)
+      await actions.updateTransaction(transactionToEdit!.id, data)
+      setTransactionToEdit(null)
+      toast.success('Transação atualizada com sucesso!')
+    } catch (error) {
+      console.error('Error updating transaction:', error)
+      toast.error('Erro ao atualizar transação')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleAddTransaction = async (data: TransactionFormValues) => {
+    try {
+      setIsSubmitting(true)
+      await actions.addTransaction(data)
+      toast.success('Transação adicionada com sucesso!')
+    } catch (error) {
+      console.error('Error adding transaction:', error)
+      toast.error('Erro ao adicionar transação')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  if (storeLoading) {
     return (
       <div className="flex-1 flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -256,7 +289,7 @@ export default function FinancePage() {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8 text-muted-foreground hover:text-foreground"
-                          onClick={() => handleEditTransaction(transaction)}
+                          onClick={() => handleEditClick(transaction)}
                         >
                           <PencilIcon className="h-4 w-4" />
                           <span className="sr-only">Editar</span>
