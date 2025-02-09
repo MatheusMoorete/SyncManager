@@ -54,10 +54,10 @@ export interface CustomerListProps {
   customers: Customer[]
   onUpdate: (id: string, data: CustomerFormValues) => Promise<void>
   onDelete: (id: string) => Promise<void>
-  isLoading?: boolean
+  loading?: boolean
 }
 
-export function CustomerList({ customers, onUpdate, onDelete, isLoading }: CustomerListProps) {
+export function CustomerList({ customers, onUpdate, onDelete, loading }: CustomerListProps) {
   const { filters, actions } = useCustomerStore()
   const [search, setSearch] = useState('')
   const router = useRouter()
@@ -292,7 +292,7 @@ export function CustomerList({ customers, onUpdate, onDelete, isLoading }: Custo
                           onSubmit={async data => {
                             await handleUpdateCustomer(customer.id!, data)
                           }}
-                          isLoading={isLoading}
+                          loading={loading}
                         />
                         <DropdownMenuItem
                           onClick={e => {
@@ -389,7 +389,7 @@ export function CustomerList({ customers, onUpdate, onDelete, isLoading }: Custo
                         onSubmit={async data => {
                           await handleUpdateCustomer(customer.id!, data)
                         }}
-                        isLoading={isLoading}
+                        loading={loading}
                       />
                       <DropdownMenuItem
                         onClick={e => {

@@ -32,7 +32,7 @@ type OtpFormData = z.infer<typeof otpSchema>
  * <MobileOtpForm />
  */
 export const MobileOtpForm: FC = () => {
-  const [isLoading, setIsLoading] = useState(false)
+  const [loading, setloading] = useState(false)
   const [showOtpInput, setShowOtpInput] = useState(false)
   const { toast } = useToast()
 
@@ -52,7 +52,7 @@ export const MobileOtpForm: FC = () => {
 
   const onPhoneSubmit = async (data: PhoneFormData) => {
     try {
-      setIsLoading(true)
+      setloading(true)
       // TODO: Integrar com Supabase Phone Auth
       await new Promise(resolve => setTimeout(resolve, 1000))
       setShowOtpInput(true)
@@ -67,13 +67,13 @@ export const MobileOtpForm: FC = () => {
         description: 'Please try again later.',
       })
     } finally {
-      setIsLoading(false)
+      setloading(false)
     }
   }
 
   const onOtpSubmit = async (data: OtpFormData) => {
     try {
-      setIsLoading(true)
+      setloading(true)
       // TODO: Integrar com Supabase OTP verification
       await new Promise(resolve => setTimeout(resolve, 1000))
       toast({
@@ -87,7 +87,7 @@ export const MobileOtpForm: FC = () => {
         description: 'Please check the code and try again.',
       })
     } finally {
-      setIsLoading(false)
+      setloading(false)
     }
   }
 
@@ -105,7 +105,7 @@ export const MobileOtpForm: FC = () => {
                     <div className="relative">
                       <Input
                         {...field}
-                        disabled={isLoading}
+                        disabled={loading}
                         inputMode="numeric"
                         placeholder="Phone number"
                         className="pl-12"
@@ -119,12 +119,8 @@ export const MobileOtpForm: FC = () => {
                 </FormItem>
               )}
             />
-            <Button 
-              type="submit" 
-              disabled={isLoading}
-              className="w-full h-12"
-            >
-              {isLoading ? (
+            <Button type="submit" disabled={loading} className="w-full h-12">
+              {loading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <>
@@ -146,7 +142,7 @@ export const MobileOtpForm: FC = () => {
                   <FormControl>
                     <Input
                       {...field}
-                      disabled={isLoading}
+                      disabled={loading}
                       inputMode="numeric"
                       placeholder="Enter 6-digit code"
                       className="text-center text-lg tracking-widest"
@@ -158,21 +154,13 @@ export const MobileOtpForm: FC = () => {
               )}
             />
             <div className="space-y-2">
-              <Button 
-                type="submit" 
-                disabled={isLoading}
-                className="w-full h-12"
-              >
-                {isLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  'Verify'
-                )}
+              <Button type="submit" disabled={loading} className="w-full h-12">
+                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Verify'}
               </Button>
               <Button
                 type="button"
                 variant="ghost"
-                disabled={isLoading}
+                disabled={loading}
                 onClick={() => setShowOtpInput(false)}
                 className="w-full h-12"
               >
@@ -184,4 +172,4 @@ export const MobileOtpForm: FC = () => {
       )}
     </div>
   )
-} 
+}

@@ -1,16 +1,28 @@
 import { create } from 'zustand'
-import { TimeRange } from '@/types/dashboard'
+import { TimeRange, DashboardData } from '@/types/dashboard'
 
 interface DashboardState {
-  timeRange: TimeRange
-  isLoading: boolean
-  setTimeRange: (range: TimeRange) => void
-  setLoading: (loading: boolean) => void
+  data: DashboardData | null
+  loading: boolean
+  error: string | null
 }
 
-export const useDashboardStore = create<DashboardState>((set) => ({
-  timeRange: '30d',
-  isLoading: false,
-  setTimeRange: (range) => set({ timeRange: range }),
-  setLoading: (loading) => set({ isLoading: loading })
-})) 
+const initialState: DashboardState = {
+  data: null,
+  loading: false,
+  error: null,
+}
+
+export const useDashboardStore = create<DashboardState>()(set => ({
+  ...initialState,
+  actions: {
+    fetchDashboardData: async () => {
+      set({ loading: true, error: null })
+      try {
+        // ... rest of the code ...
+      } catch (error) {
+        set({ error: 'Erro ao carregar dados do dashboard', loading: false })
+      }
+    },
+  },
+}))

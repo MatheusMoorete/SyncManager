@@ -68,7 +68,7 @@ export function AppointmentForm({ appointment, onSuccess }: AppointmentFormProps
     appointment ? appointment.actual_duration || appointment.service.duration : ''
   )
   const [notes, setNotes] = useState(appointment?.notes || '')
-  const [isLoading, setIsLoading] = useState(false)
+  const [loading, setloading] = useState(false)
 
   useEffect(() => {
     if (appointment) {
@@ -150,7 +150,7 @@ export function AppointmentForm({ appointment, onSuccess }: AppointmentFormProps
   // Criar ou atualizar agendamento
   const handleSubmit = async () => {
     try {
-      setIsLoading(true)
+      setloading(true)
 
       // Se não tem cliente selecionado, criar novo cliente
       let clientId: string
@@ -254,7 +254,7 @@ export function AppointmentForm({ appointment, onSuccess }: AppointmentFormProps
       console.error('Error saving appointment:', error)
       toast.error(appointment ? 'Erro ao atualizar agendamento' : 'Erro ao criar agendamento')
     } finally {
-      setIsLoading(false)
+      setloading(false)
     }
   }
 
@@ -476,20 +476,20 @@ export function AppointmentForm({ appointment, onSuccess }: AppointmentFormProps
             <Button
               variant="outline"
               onClick={appointment ? () => onSuccess?.() : resetForm}
-              disabled={isLoading}
+              disabled={loading}
             >
               Cancelar
             </Button>
             <Button
               onClick={handleSubmit}
               disabled={
-                isLoading ||
+                loading ||
                 (!selectedClient && (!newClient.name || !newClient.phone)) ||
                 !selectedService ||
                 !selectedTime
               }
             >
-              {isLoading ? (
+              {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Salvando...

@@ -20,10 +20,10 @@ interface ServiceListProps {
   services: Service[]
   onUpdate: (id: string, data: ServiceFormValues) => Promise<void>
   onDelete: (id: string) => Promise<void>
-  isLoading?: boolean
+  loading?: boolean
 }
 
-export function ServiceList({ services, onUpdate, onDelete, isLoading }: ServiceListProps) {
+export function ServiceList({ services, onUpdate, onDelete, loading }: ServiceListProps) {
   const { filters, actions } = useServiceStore()
   const [search, setSearch] = useState('')
   const [serviceToEdit, setServiceToEdit] = useState<Service | null>(null)
@@ -185,7 +185,7 @@ export function ServiceList({ services, onUpdate, onDelete, isLoading }: Service
                           active: service.active,
                         }}
                         onSubmit={data => onUpdate(service.id, data)}
-                        isLoading={isLoading}
+                        loading={loading}
                       />
                       <Button
                         variant="ghost"

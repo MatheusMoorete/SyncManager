@@ -118,7 +118,7 @@ const mapDbToForm = (data: DatabaseCustomer): CustomerFormValues => {
  * @hook useCustomerStore
  * @description Hook Zustand para gerenciamento de estado dos clientes
  * @example
- * const { customers, isLoading, actions } = useCustomerStore()
+ * const { customers, loading, actions } = useCustomerStore()
  *
  * // Buscar clientes
  * useEffect(() => {

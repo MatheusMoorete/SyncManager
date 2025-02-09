@@ -15,7 +15,7 @@ export interface CustomerDialogProps {
   title?: string
   initialData?: Partial<CustomerFormValues>
   onSubmit: (data: CustomerFormValues) => Promise<void>
-  isLoading?: boolean
+  loading?: boolean
 }
 
 export function CustomerDialog({
@@ -23,7 +23,7 @@ export function CustomerDialog({
   title = 'Novo Cliente',
   initialData,
   onSubmit,
-  isLoading,
+  loading,
 }: CustomerDialogProps) {
   return (
     <Dialog>
@@ -35,7 +35,7 @@ export function CustomerDialog({
             {initialData ? 'Edite os dados do cliente' : 'Adicione um novo cliente ao seu cadastro'}
           </DialogDescription>
         </DialogHeader>
-        <CustomerForm initialData={initialData} onSubmit={onSubmit} isLoading={isLoading} />
+        <CustomerForm initialData={initialData} onSubmit={onSubmit} loading={loading} />
       </DialogContent>
     </Dialog>
   )

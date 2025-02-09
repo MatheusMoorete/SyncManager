@@ -68,7 +68,6 @@ interface ScheduleState {
   appointments: Appointment[]
   selectedDate: Date
   loading: boolean
-  isLoading: boolean
   filters: ScheduleFilters
   businessHours: BusinessHours
   actions: {
@@ -114,25 +113,12 @@ interface AppointmentData {
  * @hook useScheduleStore
  * @description Hook Zustand para gerenciamento de estado dos agendamentos
  * @example
- * const { appointments, isLoading, actions } = useScheduleStore()
- *
- * // Buscar agendamentos
- * useEffect(() => {
- *   actions.fetchAppointments()
- * }, [])
- *
- * // Verificar disponibilidade
- * const isAvailable = actions.checkAvailability(
- *   new Date(),
- *   '14:00',
- *   '01:00:00'
- * )
+ * const { appointments, loading, actions } = useScheduleStore()
  */
 export const useScheduleStore = create<ScheduleState>((set, get) => ({
   appointments: [],
   selectedDate: new Date(),
   loading: false,
-  isLoading: false,
   filters: {
     search: '',
     date: new Date(),

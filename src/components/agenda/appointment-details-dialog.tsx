@@ -43,7 +43,7 @@ export function AppointmentDetailsDialog({
   onOpenChange,
 }: AppointmentDetailsDialogProps) {
   const [isEditing, setIsEditing] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
+  const [loading, setloading] = useState(false)
   const [showDeleteAlert, setShowDeleteAlert] = useState(false)
   const { actions: scheduleActions } = useScheduleStore()
   const { services } = useServiceStore()
@@ -91,7 +91,7 @@ export function AppointmentDetailsDialog({
 
   const handleSave = async () => {
     try {
-      setIsLoading(true)
+      setloading(true)
 
       // Validar data e hora
       const newDateTime = new Date(`${editedData.date}T${editedData.time}`)
@@ -159,20 +159,20 @@ export function AppointmentDetailsDialog({
       console.error('Error updating appointment:', error)
       toast.error('Erro ao atualizar agendamento')
     } finally {
-      setIsLoading(false)
+      setloading(false)
     }
   }
 
   const handleDelete = async () => {
     try {
-      setIsLoading(true)
+      setloading(true)
       await scheduleActions.deleteAppointment(appointment!.id)
       onOpenChange(false)
     } catch (error) {
       console.error('Error deleting appointment:', error)
       toast.error('Erro ao excluir agendamento')
     } finally {
-      setIsLoading(false)
+      setloading(false)
       setShowDeleteAlert(false)
     }
   }
@@ -304,11 +304,11 @@ export function AppointmentDetailsDialog({
             <div className="flex justify-end gap-2 pt-4 border-t">
               {isEditing ? (
                 <>
-                  <Button variant="outline" onClick={handleCancel} disabled={isLoading}>
+                  <Button variant="outline" onClick={handleCancel} disabled={loading}>
                     Cancelar
                   </Button>
-                  <Button onClick={handleSave} disabled={isLoading}>
-                    {isLoading ? (
+                  <Button onClick={handleSave} disabled={loading}>
+                    {loading ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Salvando...
@@ -326,7 +326,7 @@ export function AppointmentDetailsDialog({
                   <Button
                     variant="destructive"
                     onClick={() => setShowDeleteAlert(true)}
-                    disabled={isLoading}
+                    disabled={loading}
                   >
                     Excluir
                   </Button>
@@ -347,13 +347,13 @@ export function AppointmentDetailsDialog({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isLoading}>Cancelar</AlertDialogCancel>
+            <AlertDialogCancel disabled={loading}>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={handleDelete}
-              disabled={isLoading}
+              disabled={loading}
             >
-              {isLoading ? (
+              {loading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Excluindo...

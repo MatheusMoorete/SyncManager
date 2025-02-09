@@ -29,10 +29,10 @@ const formSchema = z.object({
 interface ServiceFormProps {
   initialData?: ServiceFormValues
   onSubmit: (data: ServiceFormValues) => Promise<void>
-  isLoading?: boolean
+  loading?: boolean
 }
 
-export function ServiceForm({ initialData, onSubmit, isLoading }: ServiceFormProps) {
+export function ServiceForm({ initialData, onSubmit, loading }: ServiceFormProps) {
   const form = useForm<ServiceFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -155,10 +155,10 @@ export function ServiceForm({ initialData, onSubmit, isLoading }: ServiceFormPro
         <div className="flex justify-end pt-4">
           <Button
             type="submit"
-            disabled={isLoading}
+            disabled={loading}
             className="bg-terracotta hover:bg-terracotta/90 text-white"
           >
-            {isLoading ? 'Salvando...' : 'Salvar'}
+            {loading ? 'Salvando...' : 'Salvar'}
           </Button>
         </div>
       </form>

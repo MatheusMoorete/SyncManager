@@ -18,17 +18,17 @@ const WEEKDAYS = [
   { label: 'Quarta', value: 3 },
   { label: 'Quinta', value: 4 },
   { label: 'Sexta', value: 5 },
-  { label: 'Sábado', value: 6 }
+  { label: 'Sábado', value: 6 },
 ]
 
 export function BusinessHoursConfig() {
-  const { config, isLoading, actions } = useBusinessHoursStore()
+  const { config, loading, actions } = useBusinessHoursStore()
   const [hasLunchBreak, setHasLunchBreak] = useState(false)
   const [formData, setFormData] = useState<BusinessHoursConfig>({
     starttime: '09:00',
     endtime: '18:00',
     daysoff: [0],
-    owner_id: ''
+    ownerId: '',
   })
 
   useEffect(() => {
@@ -45,7 +45,7 @@ export function BusinessHoursConfig() {
   const handleSubmit = async () => {
     const updatedConfig = {
       ...formData,
-      lunchbreak: hasLunchBreak ? formData.lunchbreak : undefined
+      lunchbreak: hasLunchBreak ? formData.lunchbreak : undefined,
     }
     await actions.updateConfig(updatedConfig)
   }
@@ -55,7 +55,7 @@ export function BusinessHoursConfig() {
       ...prev,
       daysoff: prev.daysoff.includes(day)
         ? prev.daysoff.filter(d => d !== day)
-        : [...prev.daysoff, day]
+        : [...prev.daysoff, day],
     }))
   }
 
@@ -69,7 +69,7 @@ export function BusinessHoursConfig() {
           <Input
             type="time"
             value={formData.starttime}
-            onChange={(e) => setFormData(prev => ({ ...prev, starttime: e.target.value }))}
+            onChange={e => setFormData(prev => ({ ...prev, starttime: e.target.value }))}
           />
         </div>
 
@@ -78,7 +78,7 @@ export function BusinessHoursConfig() {
           <Input
             type="time"
             value={formData.endtime}
-            onChange={(e) => setFormData(prev => ({ ...prev, endtime: e.target.value }))}
+            onChange={e => setFormData(prev => ({ ...prev, endtime: e.target.value }))}
           />
         </div>
       </div>
@@ -86,10 +86,7 @@ export function BusinessHoursConfig() {
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <Label>Horário de Almoço</Label>
-          <Switch
-            checked={hasLunchBreak}
-            onCheckedChange={setHasLunchBreak}
-          />
+          <Switch checked={hasLunchBreak} onCheckedChange={setHasLunchBreak} />
         </div>
 
         {hasLunchBreak && (
@@ -99,13 +96,15 @@ export function BusinessHoursConfig() {
               <Input
                 type="time"
                 value={formData.lunchbreak?.start || '12:00'}
-                onChange={(e) => setFormData(prev => ({
-                  ...prev,
-                  lunchbreak: {
-                    ...prev.lunchbreak || { end: '13:00' },
-                    start: e.target.value
-                  }
-                }))}
+                onChange={e =>
+                  setFormData(prev => ({
+                    ...prev,
+                    lunchbreak: {
+                      ...(prev.lunchbreak || { end: '13:00' }),
+                      start: e.target.value,
+                    },
+                  }))
+                }
               />
             </div>
 
@@ -114,13 +113,15 @@ export function BusinessHoursConfig() {
               <Input
                 type="time"
                 value={formData.lunchbreak?.end || '13:00'}
-                onChange={(e) => setFormData(prev => ({
-                  ...prev,
-                  lunchbreak: {
-                    ...prev.lunchbreak || { start: '12:00' },
-                    end: e.target.value
-                  }
-                }))}
+                onChange={e =>
+                  setFormData(prev => ({
+                    ...prev,
+                    lunchbreak: {
+                      ...(prev.lunchbreak || { start: '12:00' }),
+                      end: e.target.value,
+                    },
+                  }))
+                }
               />
             </div>
           </div>
@@ -130,7 +131,7 @@ export function BusinessHoursConfig() {
       <div className="space-y-2">
         <Label>Dias de Folga</Label>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-          {WEEKDAYS.map((day) => (
+          {WEEKDAYS.map(day => (
             <div key={day.value} className="flex items-center space-x-2">
               <Checkbox
                 id={`day-${day.value}`}
@@ -148,12 +149,8 @@ export function BusinessHoursConfig() {
         </div>
       </div>
 
-      <Button
-        className="w-full"
-        onClick={handleSubmit}
-        disabled={isLoading}
-      >
-        {isLoading ? (
+      <Button className="w-full" onClick={handleSubmit} disabled={loading}>
+        {loading ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             Salvando...
@@ -164,4 +161,4 @@ export function BusinessHoursConfig() {
       </Button>
     </Card>
   )
-} 
+}

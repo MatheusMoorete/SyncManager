@@ -64,7 +64,7 @@ interface CompletionDialogData {
 }
 
 export default function AtendimentosPage() {
-  const { appointments, isLoading, actions } = useScheduleStore()
+  const { appointments, loading, actions } = useScheduleStore()
   const { actions: serviceActions } = useServiceStore()
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState<FilterStatus>('all')
@@ -548,6 +548,12 @@ export default function AtendimentosPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {loading && (
+          <div className="flex items-center justify-center p-8">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        )}
       </div>
     </AppLayout>
   )

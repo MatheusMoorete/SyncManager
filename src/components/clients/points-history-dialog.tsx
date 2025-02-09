@@ -32,11 +32,11 @@ interface PointsHistoryDialogProps {
 
 export function PointsHistoryDialog({ clientId, clientName, trigger }: PointsHistoryDialogProps) {
   const [history, setHistory] = useState<PointsHistoryEntry[]>([])
-  const [isLoading, setIsLoading] = useState(false)
+  const [loading, setloading] = useState(false)
 
   const fetchHistory = async () => {
     try {
-      setIsLoading(true)
+      setloading(true)
 
       const pointsHistoryRef = collection(db, 'points_history')
       const q = query(
@@ -55,7 +55,7 @@ export function PointsHistoryDialog({ clientId, clientName, trigger }: PointsHis
     } catch (error) {
       console.error('Error fetching points history:', error)
     } finally {
-      setIsLoading(false)
+      setloading(false)
     }
   }
 
@@ -100,7 +100,7 @@ export function PointsHistoryDialog({ clientId, clientName, trigger }: PointsHis
         </DialogHeader>
 
         <ScrollArea className="h-[400px] pr-4">
-          {isLoading ? (
+          {loading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
             </div>

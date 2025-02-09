@@ -1,14 +1,14 @@
 'use client'
 
-import { ArrowDownIcon, ArrowUpIcon } from "lucide-react"
+import { ArrowDownIcon, ArrowUpIcon } from 'lucide-react'
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Skeleton } from "@/components/ui/skeleton"
-import { cn } from "@/lib/utils"
-import { DashboardKpi } from "@/types/dashboard"
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
+import { cn } from '@/lib/utils'
+import { DashboardKpi } from '@/types/dashboard'
 
 interface KpiCardProps extends DashboardKpi {
-  isLoading?: boolean
+  loading?: boolean
 }
 
 /**
@@ -26,21 +26,21 @@ export function KpiCard({
   title,
   value,
   trend,
-  formatter = "default",
-  isLoading = false,
+  formatter = 'default',
+  loading = false,
 }: KpiCardProps) {
   const formatValue = (value: number) => {
     switch (formatter) {
-      case "currency":
-        return new Intl.NumberFormat("pt-BR", {
-          style: "currency",
-          currency: "BRL",
+      case 'currency':
+        return new Intl.NumberFormat('pt-BR', {
+          style: 'currency',
+          currency: 'BRL',
         }).format(value)
-      case "number":
-        return new Intl.NumberFormat("pt-BR").format(value)
-      case "percent":
-        return new Intl.NumberFormat("pt-BR", {
-          style: "percent",
+      case 'number':
+        return new Intl.NumberFormat('pt-BR').format(value)
+      case 'percent':
+        return new Intl.NumberFormat('pt-BR', {
+          style: 'percent',
           minimumFractionDigits: 1,
         }).format(value / 100)
       default:
@@ -52,7 +52,7 @@ export function KpiCard({
   const formattedTrend = `${trendPercentage.toFixed(1)}%`
   const isPositiveTrend = trend && trend > 0
 
-  if (isLoading) {
+  if (loading) {
     return (
       <Card className="bg-card/50 backdrop-blur-sm">
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -72,14 +72,12 @@ export function KpiCard({
     <Card className="relative overflow-hidden bg-card/50 backdrop-blur-sm transition-all duration-200 hover:bg-card hover:shadow-lg">
       <div
         className={cn(
-          "absolute inset-x-0 -top-px h-px w-full",
-          isPositiveTrend ? "bg-success" : "bg-destructive"
+          'absolute inset-x-0 -top-px h-px w-full',
+          isPositiveTrend ? 'bg-success' : 'bg-destructive'
         )}
       />
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
-          {title}
-        </CardTitle>
+        <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
       </CardHeader>
       <CardContent>
         <div className="text-2xl font-semibold tracking-tight text-card-foreground">
@@ -88,10 +86,8 @@ export function KpiCard({
         {trend !== undefined && trend !== null && (
           <p
             className={cn(
-              "mt-2 flex items-center gap-1.5 text-xs font-medium",
-              isPositiveTrend 
-                ? "text-success/80" 
-                : "text-destructive/80"
+              'mt-2 flex items-center gap-1.5 text-xs font-medium',
+              isPositiveTrend ? 'text-success/80' : 'text-destructive/80'
             )}
           >
             {isPositiveTrend ? (
@@ -105,4 +101,4 @@ export function KpiCard({
       </CardContent>
     </Card>
   )
-} 
+}

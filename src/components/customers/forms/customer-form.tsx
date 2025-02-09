@@ -24,10 +24,10 @@ import { CustomerFormValues, customerFormSchema } from '@/types/customer'
 export interface CustomerFormProps {
   initialData?: Partial<CustomerFormValues>
   onSubmit: (data: CustomerFormValues) => Promise<void>
-  isLoading?: boolean
+  loading?: boolean
 }
 
-export function CustomerForm({ initialData, onSubmit, isLoading }: CustomerFormProps) {
+export function CustomerForm({ initialData, onSubmit, loading }: CustomerFormProps) {
   const closeButtonRef = useRef<HTMLButtonElement>(null)
   const form = useForm<CustomerFormValues>({
     resolver: zodResolver(customerFormSchema),
@@ -204,10 +204,10 @@ export function CustomerForm({ initialData, onSubmit, isLoading }: CustomerFormP
           </DialogClose>
           <Button
             type="submit"
-            disabled={isLoading}
+            disabled={loading}
             className="bg-terracotta hover:bg-terracotta/90 text-white"
           >
-            {isLoading ? (
+            {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 Salvando...

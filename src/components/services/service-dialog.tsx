@@ -18,7 +18,7 @@ interface ServiceDialogProps {
   title?: string
   initialData?: ServiceFormValues
   onSubmit: (data: ServiceFormValues) => Promise<void>
-  isLoading?: boolean
+  loading?: boolean
 }
 
 export function ServiceDialog({
@@ -26,7 +26,7 @@ export function ServiceDialog({
   title = 'Novo Serviço',
   initialData,
   onSubmit,
-  isLoading,
+  loading,
 }: ServiceDialogProps) {
   const [open, setOpen] = useState(false)
 
@@ -52,7 +52,7 @@ export function ServiceDialog({
               : 'Adicione um novo serviço ao seu catálogo'}
           </DialogDescription>
         </DialogHeader>
-        <ServiceForm initialData={initialData} onSubmit={handleSubmit} isLoading={isLoading} />
+        <ServiceForm initialData={initialData} onSubmit={handleSubmit} loading={loading} />
       </DialogContent>
     </Dialog>
   )

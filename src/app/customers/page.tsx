@@ -119,7 +119,7 @@ export default function CustomersPage() {
                 </Button>
               }
               onSubmit={handleCreateCustomer}
-              isLoading={loading}
+              loading={loading}
             />
           </div>
         </div>
@@ -130,7 +130,7 @@ export default function CustomersPage() {
             customers={customers}
             onUpdate={handleUpdateCustomer}
             onDelete={handleDeleteCustomer}
-            isLoading={loading}
+            loading={loading}
           />
         </Suspense>
 
@@ -146,7 +146,7 @@ export default function CustomersPage() {
               </Button>
             }
             onSubmit={handleCreateCustomer}
-            isLoading={loading}
+            loading={loading}
           />
         </div>
       </div>
