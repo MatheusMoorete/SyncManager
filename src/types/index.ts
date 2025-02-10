@@ -1,4 +1,6 @@
 export * from './client'
-export * from './appointment'
+export * from './customer'
+export * from './service'
 export * from './financial'
-export * from './dashboard' 
+export type { Appointment as DashboardAppointment } from './dashboard'
+export * from './appointment'

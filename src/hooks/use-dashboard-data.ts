@@ -164,12 +164,6 @@ export function useDashboardData(timeRange: TimeRange) {
               trend: 0,
               formatter: 'currency',
             },
-            loyaltyPoints: {
-              title: 'Pontos Fidelidade',
-              value: 0,
-              trend: 0,
-              formatter: 'number',
-            },
           },
           revenueChart: appointments
             .filter(a => a.status === 'completed')
