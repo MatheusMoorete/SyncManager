@@ -203,7 +203,7 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
               scheduled_time:
                 appointmentData.scheduled_time?.toDate()?.toISOString() || new Date().toISOString(),
               actual_duration: appointmentData.actual_duration || null,
-              final_price: appointmentData.final_price?.toString() || '0',
+              final_price: Number(appointmentData.final_price) || 0,
               status: appointmentData.status || 'scheduled',
               notes: appointmentData.notes || null,
               discount: appointmentData.discount || null,
@@ -216,7 +216,7 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
               service: {
                 name: serviceData.name || '',
                 duration: serviceData.duration || 0,
-                base_price: (serviceData.price || 0).toString(),
+                base_price: Number(serviceData.price) || 0,
               },
             } as Appointment)
           }
@@ -270,6 +270,9 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
           ownerId: user.uid,
           createdAt: Timestamp.now(),
           scheduled_time: Timestamp.fromDate(new Date(data.scheduled_time)),
+          notes: data.notes || null,
+          actual_duration: data.actual_duration || null,
+          discount: data.discount || null,
         }
 
         const docRef = await addDoc(collection(db, 'appointments'), appointmentData)

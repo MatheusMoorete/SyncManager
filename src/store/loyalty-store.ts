@@ -135,15 +135,34 @@ export const useLoyaltyStore = create<LoyaltyStore>((set, get) => ({
 
     calculatePoints: (serviceId: string, amount: number) => {
       const { config } = get()
-      if (!config || !config.enabled || amount < config.minimumForPoints) return 0
+      if (!config || !config.enabled || amount < config.minimumForPoints) {
+        console.log('Pontos não atribuídos:', {
+          configExists: !!config,
+          enabled: config?.enabled,
+          amount,
+          minimumForPoints: config?.minimumForPoints,
+        })
+        return 0
+      }
 
       // Encontrar regra específica para o serviço
       const serviceRule = config.serviceRules.find(rule => rule.service_id === serviceId)
       const multiplier = serviceRule?.multiplier || 1
 
       // Calcular pontos base e aplicar multiplicador
+      // Arredondar para baixo para evitar pontos fracionados
       const basePoints = Math.floor(amount * config.pointsPerCurrency)
-      return Math.floor(basePoints * multiplier)
+      const finalPoints = Math.floor(basePoints * multiplier)
+
+      console.log('Cálculo de pontos:', {
+        amount,
+        pointsPerCurrency: config.pointsPerCurrency,
+        basePoints,
+        multiplier,
+        finalPoints,
+      })
+
+      return finalPoints
     },
 
     getLevelByPoints: (points: number) => {

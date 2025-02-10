@@ -45,7 +45,18 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Search, Calendar, ChevronDown, Loader2, Filter } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { toast } from 'sonner'
-import { Timestamp } from 'firebase/firestore'
+import {
+  Timestamp,
+  doc,
+  getDoc,
+  setDoc,
+  collection,
+  query,
+  where,
+  getDocs,
+} from 'firebase/firestore'
+import { db } from '@/lib/firebase'
+import { useAuthStore } from '@/store/auth-store'
 
 /** Status possíveis para um atendimento */
 type AppointmentStatus = 'scheduled' | 'completed' | 'canceled' | 'no_show'
@@ -144,21 +155,189 @@ export default function AtendimentosPage() {
     try {
       setIsSaving(true)
 
-      // Se o status atual é completed e está mudando para outro status
-      if (appointment.status === 'completed' && status !== 'completed') {
-        const { useFinanceStore } = await import('@/store/finance-store')
-        const financeStore = useFinanceStore.getState()
+      if (status === 'completed') {
+        try {
+          const { useFinanceStore } = await import('@/store/finance-store')
+          const financeStore = useFinanceStore.getState()
+          const { user } = useAuthStore.getState()
 
-        // Buscar todas as transações
-        await financeStore.actions.fetchTransactions()
-        const transactions = financeStore.transactions
+          if (!user) {
+            toast.error('Erro ao atribuir pontos: usuário não autenticado')
+            return
+          }
 
-        // Encontrar a transação relacionada a este agendamento
-        const relatedTransaction = transactions.find(t => t.appointmentId === appointment.id)
+          // Criar transação financeira
+          const transactionData = {
+            type: 'income' as const,
+            category: 'Serviços',
+            amount: Number(appointment.final_price),
+            paymentMethod: 'pix' as const,
+            notes: `${appointment.service.name} - ${appointment.client.full_name}`,
+            transactionDate: Timestamp.fromDate(new Date(appointment.scheduled_time)),
+            clientId: appointment.client_id,
+            receiptUrl: null,
+            appointmentId: appointment.id,
+          }
 
-        // Se encontrou a transação, excluir
-        if (relatedTransaction) {
-          await financeStore.actions.deleteTransaction(relatedTransaction.id)
+          await financeStore.actions.addTransaction(transactionData)
+
+          // Calcular e atribuir pontos de fidelidade
+          const { useLoyaltyStore } = await import('@/store/loyalty-store')
+          const loyaltyStore = useLoyaltyStore.getState()
+
+          // Garantir que a configuração seja carregada
+          await loyaltyStore.actions.fetchConfig()
+          const config = loyaltyStore.config
+
+          // Verificar se o sistema está ativo
+          if (!config || !config.enabled) {
+            console.log('Sistema de fidelidade não está ativo')
+            return
+          }
+
+          // Calcular pontos baseado no serviço e valor
+          const points = loyaltyStore.actions.calculatePoints(
+            appointment.service_id,
+            Number(appointment.final_price)
+          )
+
+          if (points > 0) {
+            // Buscar registro atual de pontos do cliente
+            const pointsRef = doc(db, 'loyalty_points', appointment.client_id)
+            const pointsSnap = await getDoc(pointsRef)
+            const currentPoints = pointsSnap.exists() ? pointsSnap.data().points_earned : 0
+            const pointsSpent = pointsSnap.exists() ? pointsSnap.data().points_spent : 0
+
+            // Atualizar pontos do cliente
+            await setDoc(
+              pointsRef,
+              {
+                owner_id: user.uid,
+                client_id: appointment.client_id,
+                points_earned: currentPoints + points,
+                points_spent: pointsSpent,
+                updated_at: Timestamp.now(),
+                createdAt: pointsSnap.exists() ? pointsSnap.data().createdAt : Timestamp.now(),
+                last_activity: Timestamp.now(),
+              },
+              { merge: true }
+            )
+
+            // Registrar no histórico
+            const historyRef = doc(collection(db, 'points_history'))
+            await setDoc(historyRef, {
+              owner_id: user.uid,
+              client_id: appointment.client_id,
+              appointment_id: appointment.id,
+              points,
+              type: 'earned',
+              description: `Pontos ganhos pelo serviço: ${appointment.service.name} (${points} pontos)`,
+              createdAt: Timestamp.now(),
+              service_id: appointment.service_id,
+              service_name: appointment.service.name,
+              amount: Number(appointment.final_price),
+            })
+
+            toast.success(`Cliente ganhou ${points} pontos!`, {
+              style: {
+                background: 'rgb(var(--soft-sage))',
+                color: 'white',
+                fontWeight: '500',
+              },
+            })
+          }
+        } catch (error) {
+          console.error('Erro ao processar pontos de fidelidade:', error)
+          toast.error('Erro ao processar pontos de fidelidade')
+        }
+      } else if (
+        appointment.status === 'completed' &&
+        (status === 'scheduled' || status === 'canceled' || status === 'no_show')
+      ) {
+        try {
+          const { user } = useAuthStore.getState()
+          if (!user) {
+            toast.error('Erro ao remover pontos: usuário não autenticado')
+            return
+          }
+
+          // Remover transação financeira
+          const { useFinanceStore } = await import('@/store/finance-store')
+          const financeStore = useFinanceStore.getState()
+
+          // Buscar todas as transações
+          await financeStore.actions.fetchTransactions()
+          const transactions = financeStore.transactions
+
+          // Encontrar a transação relacionada a este agendamento
+          const relatedTransaction = transactions.find(t => t.appointmentId === appointment.id)
+
+          // Se encontrou a transação, excluir
+          if (relatedTransaction) {
+            await financeStore.actions.deleteTransaction(relatedTransaction.id)
+            console.log('Transação financeira removida:', relatedTransaction.id)
+          }
+
+          // Buscar histórico de pontos para encontrar quantos pontos foram dados neste agendamento
+          const pointsHistoryRef = collection(db, 'points_history')
+          const q = query(
+            pointsHistoryRef,
+            where('appointment_id', '==', appointment.id),
+            where('type', '==', 'earned')
+          )
+          const pointsHistorySnap = await getDocs(q)
+
+          if (!pointsHistorySnap.empty) {
+            const pointsHistory = pointsHistorySnap.docs[0].data()
+            const pointsToRemove = pointsHistory.points
+
+            // Buscar registro atual de pontos do cliente
+            const pointsRef = doc(db, 'loyalty_points', appointment.client_id)
+            const pointsSnap = await getDoc(pointsRef)
+
+            if (pointsSnap.exists()) {
+              const currentPoints = pointsSnap.data().points_earned
+              const pointsSpent = pointsSnap.data().points_spent
+
+              // Atualizar pontos do cliente
+              await setDoc(
+                pointsRef,
+                {
+                  points_earned: currentPoints - pointsToRemove,
+                  points_spent: pointsSpent,
+                  updated_at: Timestamp.now(),
+                  last_activity: Timestamp.now(),
+                },
+                { merge: true }
+              )
+
+              // Registrar no histórico
+              const historyRef = doc(collection(db, 'points_history'))
+              await setDoc(historyRef, {
+                owner_id: user.uid,
+                client_id: appointment.client_id,
+                appointment_id: appointment.id,
+                points: pointsToRemove,
+                type: 'removed',
+                description: `Pontos removidos devido à mudança de status do agendamento: ${appointment.service.name} (-${pointsToRemove} pontos)`,
+                createdAt: Timestamp.now(),
+                service_id: appointment.service_id,
+                service_name: appointment.service.name,
+                amount: Number(appointment.final_price),
+              })
+
+              toast.error(`${pointsToRemove} pontos foram removidos do cliente`, {
+                style: {
+                  background: 'rgb(var(--error))',
+                  color: 'white',
+                  fontWeight: '500',
+                },
+              })
+            }
+          }
+        } catch (error) {
+          console.error('Erro ao remover pontos:', error)
+          toast.error('Erro ao remover pontos do cliente')
         }
       }
 
@@ -183,28 +362,6 @@ export default function AtendimentosPage() {
       }
 
       await actions.updateAppointment(appointmentId, updateData)
-
-      // Se o status for 'completed', criar uma transação financeira
-      if (status === 'completed') {
-        const { useFinanceStore } = await import('@/store/finance-store')
-        const financeStore = useFinanceStore.getState()
-
-        await financeStore.actions.addTransaction({
-          type: 'income',
-          category: 'Serviços',
-          amount: completionData?.finalPrice || appointment.final_price,
-          paymentMethod: 'pix',
-          transactionDate: Timestamp.fromDate(new Date()),
-          notes: `Atendimento: ${appointment.service.name} - Cliente: ${appointment.client.full_name}`,
-          clientId: appointment.client_id,
-          receiptUrl: null,
-          appointmentId: appointment.id,
-        })
-
-        toast.success('Atendimento concluído com sucesso!')
-      } else {
-        toast.success('Status do atendimento atualizado!')
-      }
     } catch (error) {
       console.error('Error updating appointment:', error)
       toast.error('Erro ao atualizar atendimento')
@@ -398,7 +555,10 @@ export default function AtendimentosPage() {
           <ScrollArea className="h-[calc(100vh-280px)]">
             <div className="space-y-4">
               {appointments.map(appointment => (
-                <Card key={appointment.id} className="p-4">
+                <div
+                  key={appointment.id}
+                  className="bg-white rounded-lg border border-charcoal/10 p-4 hover:border-charcoal/20 transition-all duration-200"
+                >
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                     <div className="space-y-3">
                       <div className="space-y-1">
@@ -424,10 +584,13 @@ export default function AtendimentosPage() {
                           )}
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-sm">{appointment.service.name}</span>
+                          <span className="text-sm font-medium">{appointment.service.name}</span>
                           <span className="text-sm text-muted-foreground">•</span>
                           <span className="text-sm">
-                            R$ {Number(appointment.final_price).toFixed(2)}
+                            {new Intl.NumberFormat('pt-BR', {
+                              style: 'currency',
+                              currency: 'BRL',
+                            }).format(Number(appointment.final_price || 0))}
                           </span>
                         </div>
                         {appointment.notes && (
@@ -437,14 +600,26 @@ export default function AtendimentosPage() {
                     </div>
 
                     <div className="flex flex-col md:flex-row items-start md:items-center gap-2">
-                      <div
+                      <span
                         className={cn(
-                          'px-2.5 py-0.5 rounded-full text-xs font-semibold',
-                          statusMap[appointment.status].class
+                          'text-xs px-2 py-1 rounded-full',
+                          appointment.status === 'completed'
+                            ? 'bg-soft-sage/20 text-soft-sage'
+                            : appointment.status === 'canceled'
+                            ? 'bg-error/20 text-error'
+                            : appointment.status === 'no_show'
+                            ? 'bg-terracotta/20 text-terracotta'
+                            : 'bg-charcoal/10 text-charcoal'
                         )}
                       >
-                        {statusMap[appointment.status].label}
-                      </div>
+                        {appointment.status === 'completed'
+                          ? 'Concluído'
+                          : appointment.status === 'canceled'
+                          ? 'Cancelado'
+                          : appointment.status === 'no_show'
+                          ? 'Não Compareceu'
+                          : 'Agendado'}
+                      </span>
                       <Select
                         value={appointment.status}
                         disabled={isSaving}
@@ -464,7 +639,7 @@ export default function AtendimentosPage() {
                       </Select>
                     </div>
                   </div>
-                </Card>
+                </div>
               ))}
 
               {appointments.length === 0 && (

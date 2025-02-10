@@ -139,7 +139,7 @@ export function AppointmentDetailsDialog({
           category: 'Serviços',
           amount: selectedService.price,
           paymentMethod: 'pix' as const,
-          notes: `Pagamento referente ao agendamento #${appointment.id}`,
+          notes: `${selectedService.name} - ${appointment.client.full_name}`,
           transactionDate: Timestamp.fromDate(new Date(appointment.scheduled_time)),
           clientId: appointment.client_id,
           receiptUrl: null,

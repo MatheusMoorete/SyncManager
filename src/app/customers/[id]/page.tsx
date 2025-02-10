@@ -303,9 +303,12 @@ export default function CustomerDetailsPage({ params }: { params: { id: string }
               {/* Versão Mobile do Histórico */}
               <div className="md:hidden space-y-4">
                 <div className="space-y-4">
-                  {appointments.map((appointment: Appointment) => (
-                    <Card key={appointment.id} className="p-4">
-                      <div className="space-y-2">
+                  {appointments && appointments.length > 0 ? (
+                    appointments.map((appointment: Appointment) => (
+                      <div
+                        key={appointment.id}
+                        className="flex flex-col gap-2 border-b border-charcoal/10 pb-4 last:border-0"
+                      >
                         <div className="flex items-center gap-2">
                           <Calendar className="h-4 w-4 text-muted-foreground" />
                           <span className="text-sm">
@@ -315,29 +318,47 @@ export default function CustomerDetailsPage({ params }: { params: { id: string }
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-sm">{appointment.service.name}</span>
+                          <span className="text-sm font-medium">{appointment.service.name}</span>
                           <span className="text-sm text-muted-foreground">•</span>
-                          <span className="text-sm">R$ {appointment.final_price.toFixed(2)}</span>
+                          <span className="text-sm">
+                            {new Intl.NumberFormat('pt-BR', {
+                              style: 'currency',
+                              currency: 'BRL',
+                            }).format(Number(appointment.final_price || 0))}
+                          </span>
                         </div>
                         {appointment.notes && (
-                          <p className="text-sm text-muted-foreground mt-2">{appointment.notes}</p>
+                          <p className="text-sm text-muted-foreground">{appointment.notes}</p>
                         )}
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={cn(
+                              'text-xs px-2 py-1 rounded-full',
+                              appointment.status === 'completed'
+                                ? 'bg-soft-sage/20 text-soft-sage'
+                                : appointment.status === 'canceled'
+                                ? 'bg-error/20 text-error'
+                                : appointment.status === 'no_show'
+                                ? 'bg-terracotta/20 text-terracotta'
+                                : 'bg-charcoal/10 text-charcoal'
+                            )}
+                          >
+                            {appointment.status === 'completed'
+                              ? 'Concluído'
+                              : appointment.status === 'canceled'
+                              ? 'Cancelado'
+                              : appointment.status === 'no_show'
+                              ? 'Não Compareceu'
+                              : 'Agendado'}
+                          </span>
+                        </div>
                       </div>
-                      <div
-                        className={cn('px-2.5 py-0.5 rounded-full text-xs font-semibold', {
-                          'bg-emerald-100 text-emerald-800': appointment.status === 'scheduled',
-                          'bg-green-100 text-green-800': appointment.status === 'completed',
-                          'bg-rose-100 text-rose-800': appointment.status === 'canceled',
-                          'bg-slate-100 text-slate-800': appointment.status === 'no_show',
-                        })}
-                      >
-                        {appointment.status === 'scheduled' && 'Agendado'}
-                        {appointment.status === 'completed' && 'Concluído'}
-                        {appointment.status === 'canceled' && 'Cancelado'}
-                        {appointment.status === 'no_show' && 'Não compareceu'}
-                      </div>
-                    </Card>
-                  ))}
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                      Nenhum atendimento encontrado.
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -348,9 +369,12 @@ export default function CustomerDetailsPage({ params }: { params: { id: string }
                     Histórico de Atendimentos
                   </h2>
                   <div className="space-y-4">
-                    {appointments.map((appointment: Appointment) => (
-                      <Card key={appointment.id} className="p-4">
-                        <div className="flex items-start justify-between">
+                    {appointments && appointments.length > 0 ? (
+                      appointments.map((appointment: Appointment) => (
+                        <div
+                          key={appointment.id}
+                          className="flex items-start justify-between border-b border-charcoal/10 pb-4 last:border-0"
+                        >
                           <div className="space-y-2">
                             <div className="flex items-center gap-2">
                               <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -361,34 +385,50 @@ export default function CustomerDetailsPage({ params }: { params: { id: string }
                               </span>
                             </div>
                             <div className="flex items-center gap-2">
-                              <span className="text-sm">{appointment.service.name}</span>
+                              <span className="text-sm font-medium">
+                                {appointment.service.name}
+                              </span>
                               <span className="text-sm text-muted-foreground">•</span>
                               <span className="text-sm">
-                                R$ {appointment.final_price.toFixed(2)}
+                                {new Intl.NumberFormat('pt-BR', {
+                                  style: 'currency',
+                                  currency: 'BRL',
+                                }).format(Number(appointment.final_price || 0))}
                               </span>
                             </div>
                             {appointment.notes && (
-                              <p className="text-sm text-muted-foreground mt-2">
-                                {appointment.notes}
-                              </p>
+                              <p className="text-sm text-muted-foreground">{appointment.notes}</p>
                             )}
                           </div>
-                          <div
-                            className={cn('px-2.5 py-0.5 rounded-full text-xs font-semibold', {
-                              'bg-emerald-100 text-emerald-800': appointment.status === 'scheduled',
-                              'bg-green-100 text-green-800': appointment.status === 'completed',
-                              'bg-rose-100 text-rose-800': appointment.status === 'canceled',
-                              'bg-slate-100 text-slate-800': appointment.status === 'no_show',
-                            })}
-                          >
-                            {appointment.status === 'scheduled' && 'Agendado'}
-                            {appointment.status === 'completed' && 'Concluído'}
-                            {appointment.status === 'canceled' && 'Cancelado'}
-                            {appointment.status === 'no_show' && 'Não compareceu'}
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={cn(
+                                'text-xs px-2 py-1 rounded-full',
+                                appointment.status === 'completed'
+                                  ? 'bg-soft-sage/20 text-soft-sage'
+                                  : appointment.status === 'canceled'
+                                  ? 'bg-error/20 text-error'
+                                  : appointment.status === 'no_show'
+                                  ? 'bg-terracotta/20 text-terracotta'
+                                  : 'bg-charcoal/10 text-charcoal'
+                              )}
+                            >
+                              {appointment.status === 'completed'
+                                ? 'Concluído'
+                                : appointment.status === 'canceled'
+                                ? 'Cancelado'
+                                : appointment.status === 'no_show'
+                                ? 'Não Compareceu'
+                                : 'Agendado'}
+                            </span>
                           </div>
                         </div>
-                      </Card>
-                    ))}
+                      ))
+                    ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                        Nenhum atendimento encontrado.
+                      </div>
+                    )}
                   </div>
                 </Card>
               </div>

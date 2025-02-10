@@ -176,12 +176,28 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
         }
 
         const snapshot = await getDocs(q)
-        const customers = snapshot.docs.map(doc => ({
+        const customersData = snapshot.docs.map(doc => ({
           ...doc.data(),
           id: doc.id,
-        })) as Customer[]
+        }))
 
-        set({ customers })
+        // Buscar pontos de fidelidade para cada cliente
+        const customersWithPoints = await Promise.all(
+          customersData.map(async customer => {
+            const pointsRef = doc(db, 'loyalty_points', customer.id)
+            const pointsSnap = await getDoc(pointsRef)
+            const points = pointsSnap.exists()
+              ? pointsSnap.data().points_earned - pointsSnap.data().points_spent
+              : 0
+
+            return {
+              ...customer,
+              points,
+            }
+          })
+        )
+
+        set({ customers: customersWithPoints as Customer[] })
       } catch (error) {
         console.error('Error fetching customers:', error)
         toast.error('Erro ao carregar clientes')
