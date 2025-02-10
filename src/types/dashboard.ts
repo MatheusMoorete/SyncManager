@@ -95,6 +95,12 @@ export type DashboardData = {
       title: string
       formatter: 'currency'
     }
+    loyaltyPoints: {
+      value: number
+      trend: number | null
+      title: string
+      formatter: 'number'
+    }
   }
   servicesChart: Array<{
     name: string

@@ -392,6 +392,12 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
               trend: calculateTrend(totalIncome, previousIncome),
               formatter: 'currency',
             },
+            loyaltyPoints: {
+              title: 'Pontos Fidelidade',
+              value: totalLoyaltyPoints,
+              trend: null,
+              formatter: 'number',
+            },
           },
           birthdays: birthdays.map(customer => ({
             id: customer.id,
@@ -436,6 +442,12 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
                 trend: calculateTrend(totalExpenses, previousExpenses),
                 title: 'Despesas',
                 formatter: 'currency',
+              },
+              loyaltyPoints: {
+                value: totalLoyaltyPoints,
+                trend: null,
+                title: 'Pontos Fidelidade',
+                formatter: 'number',
               },
             },
             servicesChart: servicesData,
