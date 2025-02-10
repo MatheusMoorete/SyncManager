@@ -144,6 +144,24 @@ export default function AtendimentosPage() {
     try {
       setIsSaving(true)
 
+      // Se o status atual é completed e está mudando para outro status
+      if (appointment.status === 'completed' && status !== 'completed') {
+        const { useFinanceStore } = await import('@/store/finance-store')
+        const financeStore = useFinanceStore.getState()
+
+        // Buscar todas as transações
+        await financeStore.actions.fetchTransactions()
+        const transactions = financeStore.transactions
+
+        // Encontrar a transação relacionada a este agendamento
+        const relatedTransaction = transactions.find(t => t.appointmentId === appointment.id)
+
+        // Se encontrou a transação, excluir
+        if (relatedTransaction) {
+          await financeStore.actions.deleteTransaction(relatedTransaction.id)
+        }
+      }
+
       // Criar objeto base de atualização
       const updateData: any = {
         client_id: appointment.client_id,
@@ -180,6 +198,7 @@ export default function AtendimentosPage() {
           notes: `Atendimento: ${appointment.service.name} - Cliente: ${appointment.client.full_name}`,
           clientId: appointment.client_id,
           receiptUrl: null,
+          appointmentId: appointment.id,
         })
 
         toast.success('Atendimento concluído com sucesso!')

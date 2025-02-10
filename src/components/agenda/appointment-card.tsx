@@ -73,6 +73,24 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
 
   const handleStatusChange = async (status: 'scheduled' | 'completed' | 'canceled' | 'no_show') => {
     try {
+      // Se o status atual é completed e está mudando para outro status
+      if (appointment.status === 'completed' && status !== 'completed') {
+        const { useFinanceStore } = await import('@/store/finance-store')
+        const financeStore = useFinanceStore.getState()
+
+        // Buscar todas as transações
+        await financeStore.actions.fetchTransactions()
+        const transactions = financeStore.transactions
+
+        // Encontrar a transação relacionada a este agendamento
+        const relatedTransaction = transactions.find(t => t.appointmentId === appointment.id)
+
+        // Se encontrou a transação, excluir
+        if (relatedTransaction) {
+          await financeStore.actions.deleteTransaction(relatedTransaction.id)
+        }
+      }
+
       await actions.updateAppointment(appointment.id, {
         client_id: appointment.client_id,
         service_id: appointment.service_id,
@@ -98,6 +116,7 @@ export function AppointmentCard({ appointment }: AppointmentCardProps) {
           transactionDate: Timestamp.fromDate(new Date(appointment.scheduled_time)),
           clientId: appointment.client_id,
           receiptUrl: null,
+          appointmentId: appointment.id,
         }
 
         await financeStore.actions.addTransaction(transactionData)

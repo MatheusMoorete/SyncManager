@@ -93,44 +93,41 @@ export function AppointmentDetailsDialog({
     try {
       setloading(true)
 
-      // Validar data e hora
-      const newDateTime = new Date(`${editedData.date}T${editedData.time}`)
-      if (isNaN(newDateTime.getTime())) {
-        toast.error('Data ou hora inválida')
-        return
+      // Se o status atual é completed e está mudando para outro status
+      if (appointment.status === 'completed' && editedData.status !== 'completed') {
+        const { useFinanceStore } = await import('@/store/finance-store')
+        const financeStore = useFinanceStore.getState()
+
+        // Buscar todas as transações
+        await financeStore.actions.fetchTransactions()
+        const transactions = financeStore.transactions
+
+        // Encontrar a transação relacionada a este agendamento
+        const relatedTransaction = transactions.find(t => t.appointmentId === appointment.id)
+
+        // Se encontrou a transação, excluir
+        if (relatedTransaction) {
+          await financeStore.actions.deleteTransaction(relatedTransaction.id)
+        }
       }
 
-      // Verificar disponibilidade do horário
-      const isAvailable = await scheduleActions.checkAvailability(
-        newDateTime,
-        editedData.time,
-        appointment.service.duration,
-        appointment.id // Ignorar o próprio agendamento na verificação
-      )
-
-      if (!isAvailable) {
-        toast.error('Horário indisponível')
-        return
-      }
-
-      // Encontrar o novo serviço selecionado
+      const scheduledDate = new Date(`${editedData.date}T${editedData.time}`)
       const selectedService = services.find(s => s.id === editedData.service_id)
+
       if (!selectedService) {
-        toast.error('Serviço não encontrado')
-        return
+        throw new Error('Serviço não encontrado')
       }
 
-      // Atualizar agendamento
-      const updatedData = {
+      await scheduleActions.updateAppointment(appointment.id, {
         client_id: appointment.client_id,
         service_id: editedData.service_id,
-        scheduled_time: newDateTime.toISOString(),
+        scheduled_time: scheduledDate.toISOString(),
         final_price: selectedService.price,
         status: editedData.status as 'scheduled' | 'completed' | 'canceled' | 'no_show',
+        actual_duration: appointment.actual_duration || undefined,
         notes: editedData.notes || undefined,
-      }
-
-      await scheduleActions.updateAppointment(appointment.id, updatedData)
+        discount: appointment.discount || undefined,
+      })
 
       // Se o status for 'completed', criar uma transação financeira
       if (editedData.status === 'completed') {
@@ -146,6 +143,7 @@ export function AppointmentDetailsDialog({
           transactionDate: Timestamp.fromDate(new Date(appointment.scheduled_time)),
           clientId: appointment.client_id,
           receiptUrl: null,
+          appointmentId: appointment.id,
         }
 
         await financeStore.actions.addTransaction(transactionData)

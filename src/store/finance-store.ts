@@ -27,6 +27,7 @@ export interface Transaction {
   transactionDate: Timestamp
   notes: string | null
   createdAt: Timestamp
+  appointmentId?: string
 }
 
 interface Expense {

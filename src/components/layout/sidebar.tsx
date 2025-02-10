@@ -59,7 +59,7 @@ const managementNavItems = [
     icon: ClipboardList,
   },
   {
-    title: 'Financeiro',
+    title: 'Finanças',
     href: '/finance',
     icon: DollarSign,
   },
