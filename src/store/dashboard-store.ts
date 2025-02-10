@@ -210,9 +210,6 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
         const totalAppointments = appointments.length
         const completedAppointments = appointments.filter(a => a.status === 'completed').length
 
-        // Calcular pontos de fidelidade totais
-        const totalLoyaltyPoints = customers.reduce((sum, c) => sum + (c.points || 0), 0)
-
         // Calcular tendências apenas se houver dados
         const calculateTrend = (current: number, previous: number) => {
           if (previous === 0) return null
@@ -392,12 +389,6 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
               trend: calculateTrend(totalIncome, previousIncome),
               formatter: 'currency',
             },
-            loyaltyPoints: {
-              title: 'Pontos Fidelidade',
-              value: totalLoyaltyPoints,
-              trend: null,
-              formatter: 'number',
-            },
           },
           birthdays: birthdays.map(customer => ({
             id: customer.id,
@@ -442,12 +433,6 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
                 trend: calculateTrend(totalExpenses, previousExpenses),
                 title: 'Despesas',
                 formatter: 'currency',
-              },
-              loyaltyPoints: {
-                value: totalLoyaltyPoints,
-                trend: null,
-                title: 'Pontos Fidelidade',
-                formatter: 'number',
               },
             },
             servicesChart: servicesData,
