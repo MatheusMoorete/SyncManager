@@ -1,14 +1,8 @@
-export type KpiMetric = 
-  | 'conversionRate'
-  | 'averageTicket'
-  | 'clientRetention'
-  | 'revenue'
+import { Timestamp } from 'firebase/firestore'
 
-export type ComparePeriod = 
-  | 'previousDay'
-  | 'previousWeek'
-  | 'previousMonth'
-  | 'previousYear'
+export type KpiMetric = 'conversionRate' | 'averageTicket' | 'clientRetention' | 'revenue'
+
+export type ComparePeriod = 'previousDay' | 'previousWeek' | 'previousMonth' | 'previousYear'
 
 export type ChartVariant = 'line' | 'bar' | 'donut'
 
@@ -57,15 +51,73 @@ export interface RecentActivity {
   status: 'scheduled' | 'completed' | 'cancelled'
 }
 
-export interface DashboardData {
+export interface Transaction {
+  id: string
+  type: 'income' | 'expense'
+  amount: number
+  ownerId: string
+  transactionDate: Timestamp
+}
+
+export interface Appointment {
+  id: string
+  client_id: string
+  service_id: string
+  scheduled_time: Timestamp
+  final_price: number
+  status: 'scheduled' | 'completed' | 'cancelled' | 'no_show'
+  ownerId: string
+}
+
+export type DashboardData = {
   kpis: {
-    revenue: DashboardKpi
-    clients: DashboardKpi
-    appointments: DashboardKpi
-    loyaltyPoints: DashboardKpi
+    appointments: {
+      value: number
+      trend: number | null
+      title: string
+      formatter: 'number'
+    }
+    clients: {
+      value: number
+      trend: number | null
+      title: string
+      formatter: 'number'
+    }
+    revenue: {
+      value: number
+      trend: number | null
+      title: string
+      formatter: 'currency'
+    }
+    expenses: {
+      value: number
+      trend: number | null
+      title: string
+      formatter: 'currency'
+    }
   }
-  revenueChart: RevenueChartData[]
-  servicesChart: ServiceChartData[]
-  recentActivities: RecentActivity[]
+  servicesChart: Array<{
+    name: string
+    value: number
+    percentage: number
+  }>
+  birthdays: Array<{
+    id: string
+    name: string
+    date: string
+  }>
+  revenueChart: Array<{
+    date: string
+    revenue: number
+  }>
+  recentActivities: Array<{
+    id: string
+    type: string
+    title: string
+    description: string
+    date: string
+    value: number
+    status?: string
+  }>
   lastUpdate: string
-} 
+}

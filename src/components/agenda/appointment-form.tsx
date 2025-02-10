@@ -168,35 +168,33 @@ export function AppointmentForm({ appointment, onSuccess }: AppointmentFormProps
           return
         }
 
-        // Criar novo cliente
-        const { user } = useAuthStore.getState()
-
-        if (!user?.uid) {
-          toast.error('Usuário não autenticado')
-          return
-        }
-
         try {
           const newClientData = {
             fullName: newClient.name,
-            phone: newClient.phone.replace(/\D/g, ''),
+            phone: formatPhoneNumber(newClient.phone).replace(/\D/g, ''),
           }
 
-          // Criar o cliente e atualizar a lista
-          await customerActions.createCustomer(newClientData)
+          // Criar o cliente
+          const result = await customerActions.createCustomer(newClientData)
+
+          // Aguardar a atualização da lista de clientes
           await customerActions.fetchCustomers()
 
-          // Buscar o cliente recém-criado
-          const createdClient = customers.find(
-            c => c.full_name === newClientData.fullName && c.phone === newClientData.phone
-          )
-
-          if (!createdClient?.id) {
+          // Usar o ID retornado diretamente da criação
+          if (!result?.id) {
             toast.error('Erro ao criar cliente')
             return
           }
 
-          clientId = createdClient.id
+          clientId = result.id
+          toast.success('Cliente adicionado com sucesso!')
+
+          // Atualizar o selectedClient com o novo cliente
+          setSelectedClient({
+            id: result.id,
+            name: newClient.name,
+            phone: formatPhoneNumber(newClient.phone),
+          })
         } catch (error) {
           console.error('Error creating client:', error)
           toast.error('Erro ao criar cliente')
@@ -290,15 +288,18 @@ export function AppointmentForm({ appointment, onSuccess }: AppointmentFormProps
   }
 
   const formatPhoneNumber = (value: string) => {
-    // Remove tudo que não for número
+    // Remove tudo que não é número
     const numbers = value.replace(/\D/g, '')
 
-    // Limita a 11 dígitos
-    const limitedNumbers = numbers.slice(0, 11)
-
     // Aplica a máscara (XX) XXXXX-XXXX
-    if (limitedNumbers.length <= 11) {
-      return limitedNumbers.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3')
+    if (numbers.length <= 11) {
+      return numbers.replace(/(\d{2})?(\d{5})?(\d{4})?/, (_, ddd, first, second) => {
+        let formatted = ''
+        if (ddd) formatted += `(${ddd})`
+        if (first) formatted += ` ${first}`
+        if (second) formatted += `-${second}`
+        return formatted
+      })
     }
 
     return value

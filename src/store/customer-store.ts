@@ -69,7 +69,7 @@ interface CustomerState {
     /** Busca todos os clientes aplicando os filtros atuais */
     fetchCustomers: () => Promise<void>
     /** Cria um novo cliente */
-    createCustomer: (data: CustomerFormValues) => Promise<void>
+    createCustomer: (data: CustomerFormValues) => Promise<Customer>
     /** Atualiza os dados de um cliente existente */
     updateCustomer: (id: string, data: CustomerFormValues) => Promise<void>
     /** Realiza a exclusão lógica de um cliente */
@@ -107,11 +107,22 @@ const mapFormToDb = (data: CustomerFormValues) => {
 const mapDbToForm = (data: DatabaseCustomer): CustomerFormValues => {
   return {
     fullName: data.full_name,
-    phone: data.phone,
-    email: data.email || undefined,
-    birthDate: data.birth_date || undefined,
-    notes: data.notes || undefined,
+    phone: formatPhoneNumber(data.phone),
+    email: data.email,
+    birthDate: data.birth_date,
+    notes: data.notes,
   }
+}
+
+const formatPhoneNumber = (value: string) => {
+  // Remove tudo que não é número
+  const numbers = value.replace(/\D/g, '')
+
+  // Retorna vazio se não tiver números suficientes
+  if (numbers.length !== 11) return value
+
+  // Formata como (XX) XXXXX-XXXX
+  return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7)}`
 }
 
 /**
@@ -179,6 +190,7 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
         const customersData = snapshot.docs.map(doc => ({
           ...doc.data(),
           id: doc.id,
+          phone: formatPhoneNumber(doc.data().phone),
         }))
 
         // Buscar pontos de fidelidade para cada cliente
@@ -207,13 +219,11 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
     },
 
     createCustomer: async (data: CustomerFormValues) => {
-      const { user } = useAuthStore.getState()
-      if (!user) throw new Error('Usuário não autenticado')
-
       try {
-        set({ loading: true })
-        const now = Timestamp.now()
+        const { user } = useAuthStore.getState()
+        if (!user) throw new Error('Usuário não autenticado')
 
+        const now = Timestamp.now()
         const customerData = {
           full_name: data.fullName.trim(),
           phone: data.phone,
@@ -223,20 +233,21 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
           ownerId: user.uid,
           createdAt: now,
           updatedAt: now,
-          active: true,
           points: 0,
+          active: true,
         }
 
-        await addDoc(collection(db, 'customers'), customerData)
-        await get().actions.fetchCustomers()
+        const docRef = await addDoc(collection(db, 'customers'), customerData)
+        const newCustomer = { id: docRef.id, ...customerData } as Customer
 
-        toast.success('Cliente adicionado com sucesso!')
+        set(state => ({
+          customers: [...state.customers, newCustomer],
+        }))
+
+        return newCustomer
       } catch (error) {
-        console.error('Error creating customer:', error)
-        toast.error('Erro ao criar cliente')
+        console.error('Erro ao criar cliente:', error)
         throw error
-      } finally {
-        set({ loading: false })
       }
     },
 
