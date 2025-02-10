@@ -124,6 +124,20 @@ export function useDashboardData(timeRange: TimeRange) {
         const completedAppointments = appointments.filter(a => a.status === 'completed').length
         const totalAppointments = appointments.length
 
+        const recentActivities = appointments.slice(0, 5).map(appointment => {
+          const client = customers.find(c => c.id === appointment.client_id)
+          const service = services.find(s => s.id === appointment.service_id)
+          return {
+            id: appointment.id,
+            type: appointment.status,
+            title: client?.full_name || 'Cliente não encontrado',
+            description: service?.name || 'Serviço não encontrado',
+            date: appointment.scheduled_time.toDate().toISOString(),
+            value: appointment.final_price || 0,
+            status: appointment.status,
+          }
+        })
+
         const dashboardData: DashboardData = {
           kpis: {
             revenue: {
@@ -144,6 +158,12 @@ export function useDashboardData(timeRange: TimeRange) {
               trend: totalAppointments > 0 ? (completedAppointments / totalAppointments) * 100 : 0,
               formatter: 'number',
             },
+            expenses: {
+              title: 'Despesas',
+              value: totalExpenses,
+              trend: 0,
+              formatter: 'currency',
+            },
             loyaltyPoints: {
               title: 'Pontos Fidelidade',
               value: 0,
@@ -160,17 +180,7 @@ export function useDashboardData(timeRange: TimeRange) {
             .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
           servicesChart: [],
           birthdays: [],
-          recentActivities: appointments.slice(0, 5).map(a => {
-            const customer = customers.find(c => c.id === a.client_id)
-            const service = services.find(s => s.id === a.service_id)
-            return {
-              id: a.id,
-              type: a.status,
-              title: customer?.full_name || 'Cliente Desconhecido',
-              description: service?.name || 'Serviço Desconhecido',
-              date: a.scheduled_time.toDate().toISOString(),
-            }
-          }),
+          recentActivities,
           lastUpdate: new Date().toISOString(),
         }
 
