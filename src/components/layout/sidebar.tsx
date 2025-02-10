@@ -131,10 +131,10 @@ export function Sidebar({ onClose }: SidebarProps) {
           <Button
             variant="ghost"
             size="icon"
-            className="h-10 w-10 lg:h-8 lg:w-8 text-white/60 hover:text-white"
+            className="h-10 w-10 text-white/60 hover:text-white lg:hidden"
             onClick={onClose}
           >
-            <X className="h-6 w-6 lg:h-5 lg:w-5" />
+            <X className="h-6 w-6" />
           </Button>
         )}
       </div>
