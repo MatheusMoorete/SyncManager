@@ -25,6 +25,38 @@ interface DashboardState {
   }
 }
 
+interface FirestoreTransaction {
+  id: string
+  type: 'income' | 'expense'
+  amount: number
+  transactionDate: Timestamp
+  ownerId: string
+}
+
+interface FirestoreAppointment {
+  id: string
+  client_id: string
+  service_id: string
+  scheduled_time: Timestamp
+  final_price: number
+  status: 'scheduled' | 'completed' | 'cancelled' | 'no_show'
+  ownerId: string
+}
+
+interface FirestoreCustomer {
+  id: string
+  full_name: string
+  birth_date?: string
+  points?: number
+  ownerId: string
+}
+
+interface FirestoreService {
+  id: string
+  name: string
+  ownerId: string
+}
+
 export const useDashboardStore = create<DashboardState>((set, get) => ({
   data: null,
   loading: false,
@@ -64,324 +96,158 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
             break
         }
 
-        console.log('Período de busca:', {
-          range,
-          startDate: startDate.toLocaleString('pt-BR'),
-          endDate: endDate.toLocaleString('pt-BR'),
-        })
+        // Buscar dados necessários do Firestore
+        const [transactionsSnapshot, appointmentsSnapshot, customersSnapshot, servicesSnapshot] =
+          await Promise.all([
+            getDocs(
+              query(
+                collection(db, 'transactions'),
+                where('ownerId', '==', user.uid),
+                where('transactionDate', '>=', Timestamp.fromDate(startDate)),
+                where('transactionDate', '<=', Timestamp.fromDate(endDate)),
+                orderBy('transactionDate', 'desc')
+              )
+            ),
+            getDocs(
+              query(
+                collection(db, 'appointments'),
+                where('ownerId', '==', user.uid),
+                where('scheduled_time', '>=', Timestamp.fromDate(startDate)),
+                where('scheduled_time', '<=', Timestamp.fromDate(endDate)),
+                orderBy('scheduled_time', 'desc')
+              )
+            ),
+            getDocs(
+              query(
+                collection(db, 'customers'),
+                where('ownerId', '==', user.uid),
+                where('active', '==', true)
+              )
+            ),
+            getDocs(
+              query(
+                collection(db, 'services'),
+                where('ownerId', '==', user.uid),
+                where('active', '==', true)
+              )
+            ),
+          ])
 
-        // Buscar transações
-        const transactionsRef = collection(db, 'transactions')
-        const transactionsQuery = query(
-          transactionsRef,
-          where('ownerId', '==', user.uid),
-          where('transactionDate', '>=', Timestamp.fromDate(startDate)),
-          where('transactionDate', '<=', Timestamp.fromDate(endDate)),
-          orderBy('transactionDate', 'desc')
-        )
-        const transactionsSnapshot = await getDocs(transactionsQuery)
-
-        // Buscar agendamentos
-        const appointmentsRef = collection(db, 'appointments')
-        const appointmentsQuery = query(
-          appointmentsRef,
-          where('ownerId', '==', user.uid),
-          where('scheduled_time', '>=', Timestamp.fromDate(startDate)),
-          where('scheduled_time', '<=', Timestamp.fromDate(endDate)),
-          orderBy('scheduled_time', 'desc')
-        )
-        const appointmentsSnapshot = await getDocs(appointmentsQuery)
-        console.log('Agendamentos encontrados:', appointmentsSnapshot.docs.length)
-        console.log('Query params:', {
-          ownerId: user.uid,
-          startDate: startDate.toISOString(),
-          endDate: endDate.toISOString(),
-        })
-
-        // Buscar clientes
-        const customersRef = collection(db, 'customers')
-        const customersQuery = query(
-          customersRef,
-          where('ownerId', '==', user.uid),
-          where('active', '==', true)
-        )
-        const customersSnapshot = await getDocs(customersQuery)
-
-        // Buscar serviços
-        const servicesRef = collection(db, 'services')
-        const servicesQuery = query(
-          servicesRef,
-          where('ownerId', '==', user.uid),
-          where('active', '==', true)
-        )
-        const servicesSnapshot = await getDocs(servicesQuery)
-
-        // Calcular métricas
+        // Mapear dados
         const transactions = transactionsSnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data(),
-        })) as Array<{
-          id: string
-          type: 'income' | 'expense'
-          amount: number
-          ownerId: string
-          transactionDate: Timestamp
-        }>
+        })) as FirestoreTransaction[]
 
-        const appointments = appointmentsSnapshot.docs.map(doc => {
-          const data = doc.data()
-          console.log('Dados do agendamento:', { id: doc.id, ...data })
-          return {
-            id: doc.id,
-            ...data,
-          }
-        }) as Array<{
-          id: string
-          client_id: string
-          service_id: string
-          scheduled_time: Timestamp
-          final_price: number
-          status: 'scheduled' | 'completed' | 'cancelled' | 'no_show'
-          ownerId: string
-        }>
-
-        console.log('Total de agendamentos processados:', appointments.length)
-        console.log(
-          'Agendamentos completos:',
-          appointments.filter(a => a.status === 'completed').length
-        )
+        const appointments = appointmentsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as FirestoreAppointment[]
 
         const customers = customersSnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data(),
-        })) as Array<{
-          id: string
-          full_name: string
-          points: number
-          birth_date: string | null
-          ownerId: string
-        }>
-
-        // Filtrar aniversariantes da semana
-        const today = new Date()
-        const nextWeek = new Date(today)
-        nextWeek.setDate(today.getDate() + 7)
-
-        const birthdays = customers
-          .filter(customer => customer.birth_date)
-          .map(customer => {
-            const [day, month] = customer.birth_date!.split('/')
-            const birthDate = new Date(today.getFullYear(), parseInt(month) - 1, parseInt(day))
-            return {
-              ...customer,
-              birthDate,
-            }
-          })
-          .filter(customer => {
-            const now = today.getTime()
-            const next = nextWeek.getTime()
-            const birth = customer.birthDate.getTime()
-            return birth >= now && birth <= next
-          })
-          .sort((a, b) => a.birthDate.getTime() - b.birthDate.getTime())
+        })) as FirestoreCustomer[]
 
         const services = servicesSnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data(),
-        })) as Array<{
-          id: string
-          name: string
-          ownerId: string
-        }>
+        })) as FirestoreService[]
 
-        // Calcular receita total
+        // Calcular métricas
         const totalIncome = transactions
           .filter(t => t.type === 'income')
           .reduce((sum, t) => sum + (t.amount || 0), 0)
-
         const totalExpenses = transactions
           .filter(t => t.type === 'expense')
           .reduce((sum, t) => sum + (t.amount || 0), 0)
-
-        // Calcular total de clientes ativos
         const activeCustomers = customers.length
-
-        // Calcular total de agendamentos e taxa de conclusão
         const totalAppointments = appointments.length
-        const completedAppointments = appointments.filter(a => a.status === 'completed').length
 
-        // Calcular tendências apenas se houver dados
-        const calculateTrend = (current: number, previous: number) => {
-          if (previous === 0) return null
-          return ((current - previous) / previous) * 100
-        }
-
-        // Buscar dados do período anterior para comparação
+        // Calcular dados do período anterior
         const previousStartDate = new Date(startDate)
         const previousEndDate = new Date(startDate)
-        previousStartDate.setHours(0, 0, 0, 0)
-        previousEndDate.setHours(23, 59, 59, 999)
+        previousStartDate.setDate(previousStartDate.getDate() - getDaysForRange(range))
 
-        switch (range) {
-          case '7d':
-            previousStartDate.setDate(previousStartDate.getDate() - 7)
-            break
-          case '30d':
-            previousStartDate.setDate(previousStartDate.getDate() - 30)
-            break
-          case '90d':
-            previousStartDate.setDate(previousStartDate.getDate() - 90)
-            break
-          case '365d':
-            previousStartDate.setDate(previousStartDate.getDate() - 365)
-            break
-        }
+        const [previousTransactions, previousAppointments, previousCustomers] = await Promise.all([
+          getDocs(
+            query(
+              collection(db, 'transactions'),
+              where('ownerId', '==', user.uid),
+              where('transactionDate', '>=', Timestamp.fromDate(previousStartDate)),
+              where('transactionDate', '<=', Timestamp.fromDate(previousEndDate))
+            )
+          ),
+          getDocs(
+            query(
+              collection(db, 'appointments'),
+              where('ownerId', '==', user.uid),
+              where('scheduled_time', '>=', Timestamp.fromDate(previousStartDate)),
+              where('scheduled_time', '<=', Timestamp.fromDate(previousEndDate))
+            )
+          ),
+          getDocs(
+            query(
+              collection(db, 'customers'),
+              where('ownerId', '==', user.uid),
+              where('createdAt', '>=', Timestamp.fromDate(previousStartDate)),
+              where('createdAt', '<=', Timestamp.fromDate(previousEndDate))
+            )
+          ),
+        ])
 
-        console.log('Período anterior:', {
-          range,
-          previousStartDate: previousStartDate.toLocaleString('pt-BR'),
-          previousEndDate: previousEndDate.toLocaleString('pt-BR'),
-        })
+        const previousTransactionsData = previousTransactions.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+        })) as FirestoreTransaction[]
 
-        // Buscar transações do período anterior
-        const previousTransactionsQuery = query(
-          transactionsRef,
-          where('ownerId', '==', user.uid),
-          where('transactionDate', '>=', Timestamp.fromDate(previousStartDate)),
-          where('transactionDate', '<=', Timestamp.fromDate(previousEndDate)),
-          orderBy('transactionDate', 'desc')
-        )
-
-        // Buscar agendamentos do período anterior
-        const previousAppointmentsQuery = query(
-          appointmentsRef,
-          where('ownerId', '==', user.uid),
-          where('scheduled_time', '>=', Timestamp.fromDate(previousStartDate)),
-          where('scheduled_time', '<=', Timestamp.fromDate(previousEndDate)),
-          orderBy('scheduled_time', 'desc')
-        )
-
-        const previousTransactionsSnapshot = await getDocs(previousTransactionsQuery)
-        const previousTransactions = previousTransactionsSnapshot.docs.map(
-          doc =>
-            ({ ...doc.data() } as {
-              id: string
-              type: 'income' | 'expense'
-              amount: number
-              ownerId: string
-              transactionDate: Timestamp
-            })
-        )
-
-        const previousIncome = previousTransactions
+        const previousIncome = previousTransactionsData
           .filter(t => t.type === 'income')
           .reduce((sum, t) => sum + (t.amount || 0), 0)
-
-        const previousExpenses = previousTransactions
+        const previousExpenses = previousTransactionsData
           .filter(t => t.type === 'expense')
           .reduce((sum, t) => sum + (t.amount || 0), 0)
+        const previousAppointmentsCount = previousAppointments.docs.length
+        const previousCustomersCount = previousCustomers.docs.length
 
-        // Buscar agendamentos do período anterior
-        const previousAppointmentsSnapshot = await getDocs(previousAppointmentsQuery)
-        const previousAppointments = previousAppointmentsSnapshot.docs.length
+        // Calcular tendências
+        const calculateTrend = (current: number, previous: number) =>
+          previous === 0 ? null : ((current - previous) / previous) * 100
 
-        // Buscar clientes do período anterior
-        const previousCustomersQuery = query(
-          customersRef,
-          where('ownerId', '==', user.uid),
-          where('createdAt', '>=', Timestamp.fromDate(previousStartDate)),
-          where('createdAt', '<=', Timestamp.fromDate(previousEndDate))
-        )
-        const previousCustomersSnapshot = await getDocs(previousCustomersQuery)
-        const previousCustomers = previousCustomersSnapshot.docs.length
+        // Mapear atividades recentes
+        const recentActivities = await Promise.all(
+          appointments.slice(0, 5).map(async appointment => {
+            const [clientDoc, serviceDoc] = await Promise.all([
+              getDoc(doc(db, 'customers', appointment.client_id)),
+              getDoc(doc(db, 'services', appointment.service_id)),
+            ])
 
-        const servicesData = Object.entries(
-          appointments.reduce((acc, appointment) => {
-            const serviceId = appointment.service_id
-            acc[serviceId] = (acc[serviceId] || 0) + 1
-            return acc
-          }, {} as Record<string, number>)
-        )
-          .map(([serviceId, count]: [string, number]) => {
-            const service = services.find(s => s.id === serviceId)
             return {
-              name: service?.name || 'Serviço Desconhecido',
-              value: count,
-              percentage: (count / totalAppointments) * 100,
+              id: appointment.id,
+              type: appointment.status,
+              title: clientDoc.data()?.full_name || 'Cliente não encontrado',
+              description: serviceDoc.data()?.name || 'Serviço não encontrado',
+              date: appointment.scheduled_time.toDate().toISOString(),
+              value: appointment.final_price || 0,
+              status: appointment.status,
             }
           })
-          .sort((a, b) => b.value - a.value)
-          .slice(0, 5)
-
-        const mapAppointmentToActivity = async (appointment: {
-          id: string
-          client_id: string
-          service_id: string
-          scheduled_time: Timestamp
-          final_price: number
-          status: 'scheduled' | 'completed' | 'cancelled' | 'no_show'
-          ownerId: string
-        }) => {
-          // Buscar dados do cliente
-          const clientDoc = await getDoc(doc(db, 'customers', appointment.client_id))
-          const clientData = clientDoc.data()
-
-          // Buscar dados do serviço
-          const serviceDoc = await getDoc(doc(db, 'services', appointment.service_id))
-          const serviceData = serviceDoc.data()
-
-          return {
-            id: appointment.id,
-            type: 'appointment',
-            title: clientData?.full_name || 'Cliente não encontrado',
-            description: serviceData?.name || 'Serviço não encontrado',
-            date: appointment.scheduled_time.toDate().toISOString(),
-            status: appointment.status,
-            value: appointment.final_price || 0,
-          }
-        }
-
-        // Buscar agendamentos recentes
-        const recentActivitiesQuery = query(
-          collection(db, 'appointments'),
-          where('ownerId', '==', user.uid),
-          orderBy('scheduled_time', 'desc'),
-          limit(5)
-        )
-        const recentActivitiesSnapshot = await getDocs(recentActivitiesQuery)
-        const recentActivities = await Promise.all(
-          recentActivitiesSnapshot.docs.map(doc =>
-            mapAppointmentToActivity({ id: doc.id, ...doc.data() } as {
-              id: string
-              client_id: string
-              service_id: string
-              scheduled_time: Timestamp
-              final_price: number
-              status: 'scheduled' | 'completed' | 'cancelled' | 'no_show'
-              ownerId: string
-            })
-          )
         )
 
+        // Montar objeto final
         const dashboardData: DashboardData = {
           kpis: {
             appointments: {
               title: 'Agendamentos',
               value: totalAppointments,
-              trend: calculateTrend(totalAppointments, previousAppointments),
+              trend: calculateTrend(totalAppointments, previousAppointmentsCount),
               formatter: 'number',
             },
             clients: {
-              title: 'Clientes',
+              title: 'Clientes Ativos',
               value: activeCustomers,
-              trend: calculateTrend(activeCustomers, previousCustomers),
+              trend: calculateTrend(activeCustomers, previousCustomersCount),
               formatter: 'number',
-            },
-            expenses: {
-              title: 'Despesas',
-              value: totalExpenses,
-              trend: calculateTrend(totalExpenses, previousExpenses),
-              formatter: 'currency',
             },
             revenue: {
               title: 'Faturamento',
@@ -389,76 +255,82 @@ export const useDashboardStore = create<DashboardState>((set, get) => ({
               trend: calculateTrend(totalIncome, previousIncome),
               formatter: 'currency',
             },
+            expenses: {
+              title: 'Despesas',
+              value: totalExpenses,
+              trend: calculateTrend(totalExpenses, previousExpenses),
+              formatter: 'currency',
+            },
           },
-          birthdays: birthdays.map(customer => ({
-            id: customer.id,
-            name: customer.full_name,
-            date: customer.birth_date!,
-          })),
-          revenueChart: appointments
-            .filter(a => a.status === 'completed')
-            .map(a => ({
-              date: a.scheduled_time.toDate().toISOString(),
-              revenue: a.final_price || 0,
-            }))
-            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()),
-          servicesChart: servicesData,
+          servicesChart: getServicesChartData(appointments, services),
+          birthdays: getBirthdaysData(customers),
+          revenueChart: getRevenueChartData(transactions),
           recentActivities,
           lastUpdate: new Date().toISOString(),
         }
 
-        set({
-          data: {
-            kpis: {
-              appointments: {
-                value: totalAppointments,
-                trend: calculateTrend(totalAppointments, previousAppointments),
-                title: 'Agendamentos',
-                formatter: 'number',
-              },
-              clients: {
-                value: activeCustomers,
-                trend: calculateTrend(activeCustomers, previousCustomers),
-                title: 'Clientes Ativos',
-                formatter: 'number',
-              },
-              revenue: {
-                value: totalIncome,
-                trend: calculateTrend(totalIncome, previousIncome),
-                title: 'Faturamento',
-                formatter: 'currency',
-              },
-              expenses: {
-                value: totalExpenses,
-                trend: calculateTrend(totalExpenses, previousExpenses),
-                title: 'Despesas',
-                formatter: 'currency',
-              },
-            },
-            servicesChart: servicesData,
-            birthdays: birthdays.map(customer => ({
-              id: customer.id,
-              name: customer.full_name,
-              date: customer.birth_date!,
-            })),
-            revenueChart: transactions
-              .filter(t => t.type === 'income')
-              .map(t => ({
-                date: t.transactionDate.toDate().toLocaleDateString('pt-BR'),
-                revenue: t.amount,
-              })),
-            recentActivities,
-            lastUpdate: new Date().toLocaleString('pt-BR'),
-          },
-          loading: false,
-        })
+        set({ data: dashboardData, loading: false })
       } catch (error) {
         console.error('Erro ao carregar dados do dashboard:', error)
-        set({
-          error: 'Erro ao carregar dados do dashboard',
-          loading: false,
-        })
+        set({ error: 'Erro ao carregar dados do dashboard', loading: false })
       }
     },
   },
 }))
+
+// Funções auxiliares
+function getDaysForRange(range: TimeRange): number {
+  switch (range) {
+    case '7d':
+      return 7
+    case '30d':
+      return 30
+    case '90d':
+      return 90
+    case '365d':
+      return 365
+  }
+}
+
+function getServicesChartData(appointments: FirestoreAppointment[], services: FirestoreService[]) {
+  const serviceCount = appointments.reduce((acc, appointment) => {
+    acc[appointment.service_id] = (acc[appointment.service_id] || 0) + 1
+    return acc
+  }, {} as Record<string, number>)
+
+  return Object.entries(serviceCount)
+    .map(([serviceId, count]) => ({
+      name: services.find(s => s.id === serviceId)?.name || 'Serviço Desconhecido',
+      value: count,
+      percentage: (count / appointments.length) * 100,
+    }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 5)
+}
+
+function getBirthdaysData(customers: FirestoreCustomer[]) {
+  const today = new Date()
+  const nextWeek = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000)
+
+  return customers
+    .filter(customer => customer.birth_date)
+    .map(customer => ({
+      id: customer.id,
+      name: customer.full_name,
+      date: customer.birth_date!,
+    }))
+    .filter(customer => {
+      const [day, month] = customer.date.split('/')
+      const birthDate = new Date(today.getFullYear(), parseInt(month) - 1, parseInt(day))
+      return birthDate >= today && birthDate <= nextWeek
+    })
+}
+
+function getRevenueChartData(transactions: FirestoreTransaction[]) {
+  return transactions
+    .filter(t => t.type === 'income')
+    .map(t => ({
+      date: t.transactionDate.toDate().toLocaleDateString('pt-BR'),
+      revenue: t.amount,
+    }))
+}
