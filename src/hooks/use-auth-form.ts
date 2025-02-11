@@ -15,6 +15,8 @@ import { useAuthStore } from '@/store/auth-store'
 import { SignUpFormValues, SignInFormValues } from '@/schemas/auth'
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
 
+type SignUpData = Omit<SignUpFormValues, 'confirmPassword'>
+
 export function useAuthForm() {
   const router = useRouter()
   const { toast } = useToast()
@@ -67,7 +69,7 @@ export function useAuthForm() {
     }
   }
 
-  const signUp = async ({ name, email, password }: SignUpFormValues) => {
+  const signUp = async ({ name, email, password }: SignUpData) => {
     try {
       setLoading(true)
 
