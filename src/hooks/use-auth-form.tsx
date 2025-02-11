@@ -1,8 +1,8 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useToast } from '@/components/ui/use-toast'
-import { auth, db } from '@/lib/firebase'
+import { useToast } from '../components/ui/use-toast'
+import { auth, db } from '../lib/firebase'
 import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
@@ -11,10 +11,11 @@ import {
   sendEmailVerification,
   updateProfile,
 } from 'firebase/auth'
-import { useAuthStore } from '@/store/auth-store'
-import { SignUpFormValues, SignInFormValues } from '@/schemas/auth'
+import { useAuthStore } from '../store/auth-store'
+import { SignUpFormValues, SignInFormValues } from '../schemas/auth'
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
-import { EmailVerificationAlert } from '@/components/auth/email-verification-alert'
+import { EmailVerificationAlert } from '../components/auth/email-verification-alert'
+import React from 'react'
 
 export function useAuthForm() {
   const router = useRouter()
@@ -71,9 +72,7 @@ export function useAuthForm() {
   const showEmailVerificationAlert = (isNewUser = false) => {
     toast({
       title: isNewUser ? 'Conta criada com sucesso!' : 'Verificação necessária',
-      description: isNewUser
-        ? 'Enviamos um link de confirmação para seu email.'
-        : 'Seu email ainda não foi verificado. Por favor, verifique sua caixa de entrada e spam.',
+      description: <EmailVerificationAlert isNewUser={isNewUser} />,
       duration: 10000,
     })
   }
@@ -120,25 +119,24 @@ export function useAuthForm() {
       const { user } = await signInWithEmailAndPassword(auth, email, password)
 
       if (!user.emailVerified) {
-        // Reenviar email de verificação
+        // Reenviar email de verificação e mostrar alerta
         await sendEmailVerification(user, {
           url: window.location.origin + '/login?verification=success',
         })
         showEmailVerificationAlert(false)
+        setLoading(false)
         return
       }
 
-      // Atualizar status do usuário no Firestore
-      if (user.emailVerified) {
-        await setDoc(
-          doc(db, 'profiles', user.uid),
-          {
-            status: 'active',
-            updatedAt: serverTimestamp(),
-          },
-          { merge: true }
-        )
-      }
+      // Se o email foi verificado, continua com o login
+      await setDoc(
+        doc(db, 'profiles', user.uid),
+        {
+          status: 'active',
+          updatedAt: serverTimestamp(),
+        },
+        { merge: true }
+      )
 
       setUser(user)
       router.push('/dashboard')

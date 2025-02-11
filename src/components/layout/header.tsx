@@ -20,20 +20,14 @@
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Menu } from 'lucide-react'
+import { useAuthStore } from '@/store/auth-store'
 
 /**
  * @interface HeaderProps
  * @description Props do componente Header
- * @property {Object} user - Dados do usuário logado
- * @property {string} user.name - Nome completo do usuário
- * @property {string} user.role - Cargo/função do usuário
  * @property {Function} onMenuClick - Função chamada ao clicar no botão do menu mobile
  */
 interface HeaderProps {
-  user: {
-    name: string
-    role: string
-  }
   onMenuClick: () => void
 }
 
@@ -43,8 +37,9 @@ interface HeaderProps {
  * @param {HeaderProps} props - Props do componente
  * @returns {JSX.Element} Header renderizado com informações do usuário
  */
-export function Header({ user, onMenuClick }: HeaderProps) {
-  const firstName = user.name.split(' ')[0]
+export function Header({ onMenuClick }: HeaderProps) {
+  const { user } = useAuthStore()
+  const firstName = user?.displayName?.split(' ')[0] || 'Usuário'
 
   return (
     <header className="flex h-14 lg:h-16 items-center justify-between border-b border-charcoal/10 bg-white/80 px-4 lg:px-6">
