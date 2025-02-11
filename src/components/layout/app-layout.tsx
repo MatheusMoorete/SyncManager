@@ -16,7 +16,7 @@
  * </AppLayout>
  */
 
-import { useState } from 'react'
+import { ReactNode, useState } from 'react'
 import { Header } from './header'
 import { Sidebar } from './sidebar'
 import { Button } from '@/components/ui/button'
@@ -31,7 +31,7 @@ import { cn } from '@/lib/utils'
  * @property {React.ReactNode} children - Conteúdo a ser renderizado dentro do layout
  */
 interface AppLayoutProps {
-  children: React.ReactNode
+  children: ReactNode
   className?: string
 }
 
@@ -68,13 +68,7 @@ export function AppLayout({ children, className }: AppLayoutProps) {
 
             {/* Main Content */}
             <div className="flex flex-1 flex-col w-full">
-              <Header
-                user={{
-                  name: 'Matheus Moorete',
-                  role: 'Administrador',
-                }}
-                onMenuClick={() => setIsSidebarOpen(true)}
-              />
+              <Header onMenuClick={() => setIsSidebarOpen(true)} />
               <main className="flex-1 overflow-y-auto bg-neutral-cream/50 pb-safe">{children}</main>
             </div>
           </div>
