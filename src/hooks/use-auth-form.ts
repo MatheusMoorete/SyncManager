@@ -14,7 +14,6 @@ import {
 import { useAuthStore } from '@/store/auth-store'
 import { SignUpFormValues, SignInFormValues } from '@/schemas/auth'
 import { doc, setDoc, serverTimestamp } from 'firebase/firestore'
-import { EmailVerificationAlert } from '@/components/auth/email-verification-alert'
 
 export function useAuthForm() {
   const router = useRouter()
@@ -68,16 +67,6 @@ export function useAuthForm() {
     }
   }
 
-  const showEmailVerificationAlert = (isNewUser = false) => {
-    toast({
-      title: isNewUser ? 'Conta criada com sucesso!' : 'Verificação necessária',
-      description: isNewUser
-        ? 'Enviamos um link de confirmação para seu email.'
-        : 'Seu email ainda não foi verificado. Por favor, verifique sua caixa de entrada e spam.',
-      duration: 10000,
-    })
-  }
-
   const signUp = async ({ name, email, password }: SignUpFormValues) => {
     try {
       setLoading(true)
@@ -97,16 +86,23 @@ export function useAuthForm() {
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         role: 'user',
-        status: 'pending_verification',
+        status: 'active',
       })
 
       // 4. Enviar email de verificação
-      await sendEmailVerification(user, {
-        url: window.location.origin + '/login?verification=success',
+      await sendEmailVerification(user)
+
+      setUser(user)
+
+      // Mostrar toast de sucesso
+      toast({
+        title: 'Conta criada com sucesso!',
+        description: 'Verifique seu email para ativar sua conta.',
+        duration: 5000,
       })
 
-      showEmailVerificationAlert(true)
-      router.push('/login?verification=pending')
+      // Redirecionar para página de confirmação pendente
+      router.push('/auth/confirmation-pending')
     } catch (error) {
       handleError(error, 'Erro ao criar conta')
     } finally {
@@ -121,23 +117,8 @@ export function useAuthForm() {
 
       if (!user.emailVerified) {
         // Reenviar email de verificação
-        await sendEmailVerification(user, {
-          url: window.location.origin + '/login?verification=success',
-        })
-        showEmailVerificationAlert(false)
-        return
-      }
-
-      // Atualizar status do usuário no Firestore
-      if (user.emailVerified) {
-        await setDoc(
-          doc(db, 'profiles', user.uid),
-          {
-            status: 'active',
-            updatedAt: serverTimestamp(),
-          },
-          { merge: true }
-        )
+        await sendEmailVerification(user)
+        throw new Error('Email não verificado. Reenviamos o link de confirmação.')
       }
 
       setUser(user)
