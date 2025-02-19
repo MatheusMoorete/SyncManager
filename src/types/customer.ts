@@ -12,16 +12,18 @@ export const customerFormSchema = z.object({
     .regex(/^\(\d{2}\)\s\d{5}-\d{4}$/, 'Telefone inválido. Use o formato (99) 99999-9999'),
   email: z
     .string()
-    .email('Email inválido')
     .optional()
     .nullable()
-    .transform(value => (value === '' ? null : value)),
+    .transform(value => (value === '' ? null : value))
+    .refine(
+      value => {
+        if (!value) return true
+        return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)
+      },
+      { message: 'Email inválido' }
+    ),
   birthDate: z
     .string()
-    .regex(
-      /^(0[1-9]|[12][0-9]|3[01])\/(0[1-9]|1[0-2])\/\d{4}$/,
-      'Data inválida. Use o formato DD/MM/AAAA'
-    )
     .optional()
     .nullable()
     .transform(value => (value === '' ? null : value)),
