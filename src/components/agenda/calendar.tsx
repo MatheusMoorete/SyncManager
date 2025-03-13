@@ -162,10 +162,16 @@ export function Calendar({ className }: CalendarProps) {
 
   // Agrupar agendamentos por dia e hora
   const getAppointmentsForDayAndHour = (date: Date, hour: number): Appointment[] => {
-    return appointments.filter(appointment => {
-      const appointmentDate = new Date(appointment.scheduled_time)
-      return isSameDay(appointmentDate, date) && appointmentDate.getHours() === hour
-    })
+    return appointments
+      .filter(appointment => {
+        const appointmentDate = new Date(appointment.scheduled_time)
+        return isSameDay(appointmentDate, date) && appointmentDate.getHours() === hour
+      })
+      .sort((a, b) => {
+        const timeA = new Date(a.scheduled_time).getMinutes()
+        const timeB = new Date(b.scheduled_time).getMinutes()
+        return timeA - timeB
+      })
   }
 
   // Formatar título do período

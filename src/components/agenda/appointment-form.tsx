@@ -36,6 +36,7 @@ interface AppointmentFormProps {
 export function AppointmentForm({ appointment, onSuccess }: AppointmentFormProps) {
   const [isSearching, setIsSearching] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
+  const [isCustomDuration, setIsCustomDuration] = useState(false)
   const { selectedDate, actions: scheduleActions } = useScheduleStore()
   const { customers, actions: customerActions } = useCustomerStore()
   const { services, actions: serviceActions } = useServiceStore()
@@ -441,6 +442,21 @@ export function AppointmentForm({ appointment, onSuccess }: AppointmentFormProps
                     const formattedDuration = `${durationInHours
                       .toString()
                       .padStart(2, '0')}:${durationInMinutes.toString().padStart(2, '0')}:00`
+
+                    // Verifica se a duração está nas opções pré-definidas
+                    const standardDurations = [
+                      '00:15:00',
+                      '00:30:00',
+                      '00:45:00',
+                      '01:00:00',
+                      '01:30:00',
+                      '02:00:00',
+                    ]
+                    if (standardDurations.includes(formattedDuration)) {
+                      setIsCustomDuration(false)
+                    } else {
+                      setIsCustomDuration(true)
+                    }
                     setDuration(formattedDuration)
                   }
                 }}
@@ -462,7 +478,17 @@ export function AppointmentForm({ appointment, onSuccess }: AppointmentFormProps
 
             <div className="space-y-2">
               <Label>Duração</Label>
-              <Select value={duration} onValueChange={setDuration}>
+              <Select
+                value={isCustomDuration ? 'custom' : duration}
+                onValueChange={(value: string) => {
+                  if (value === 'custom') {
+                    setIsCustomDuration(true)
+                  } else {
+                    setIsCustomDuration(false)
+                    setDuration(value)
+                  }
+                }}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione a duração" />
                 </SelectTrigger>
@@ -471,8 +497,32 @@ export function AppointmentForm({ appointment, onSuccess }: AppointmentFormProps
                   <SelectItem value="00:30:00">30 minutos</SelectItem>
                   <SelectItem value="00:45:00">45 minutos</SelectItem>
                   <SelectItem value="01:00:00">1 hora</SelectItem>
+                  <SelectItem value="01:30:00">1 hora e 30 minutos</SelectItem>
+                  <SelectItem value="02:00:00">2 horas</SelectItem>
+                  <SelectItem value="custom">Personalizado</SelectItem>
                 </SelectContent>
               </Select>
+              {isCustomDuration && (
+                <div className="mt-2">
+                  <Input
+                    type="time"
+                    step="900"
+                    value={duration ? duration.slice(0, 5) : '00:00'}
+                    onChange={e => {
+                      if (!e.target.value) return
+                      const [hours, minutes] = e.target.value.split(':').map(Number)
+                      if (isNaN(hours) || isNaN(minutes)) return
+                      const formattedDuration = `${hours.toString().padStart(2, '0')}:${minutes
+                        .toString()
+                        .padStart(2, '0')}:00`
+                      setDuration(formattedDuration)
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Insira o tempo no formato HH:MM
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 

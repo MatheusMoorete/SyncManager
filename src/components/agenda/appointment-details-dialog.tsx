@@ -250,7 +250,21 @@ export function AppointmentDetailsDialog({
                 <>
                   <h3 className="text-lg font-medium mt-1">{appointment.service.name}</h3>
                   <div className="flex items-center gap-3 mt-0.5 text-sm text-muted-foreground">
-                    <p>Duração: {appointment.actual_duration || appointment.service.duration}</p>
+                    <p>
+                      Duração:{' '}
+                      {(() => {
+                        const duration = appointment.actual_duration || appointment.service.duration
+                        const [hours, minutes] = duration.split(':').map(Number)
+
+                        if (hours === 0) {
+                          return `${minutes} minutos`
+                        } else if (minutes === 0) {
+                          return `${hours} ${hours === 1 ? 'hora' : 'horas'}`
+                        } else {
+                          return `${hours} ${hours === 1 ? 'hora' : 'horas'} e ${minutes} minutos`
+                        }
+                      })()}
+                    </p>
                     <span>•</span>
                     <p>Valor: R$ {Number(appointment.final_price).toFixed(2)}</p>
                   </div>
@@ -275,9 +289,25 @@ export function AppointmentDetailsDialog({
                   />
                 </div>
               ) : (
-                <h3 className="text-lg font-medium mt-1">
-                  {format(new Date(appointment.scheduled_time), "PPP 'às' HH:mm", { locale: ptBR })}
-                </h3>
+                <div className="mt-1">
+                  <h3 className="text-lg font-medium">
+                    {format(new Date(appointment.scheduled_time), "d 'de' MMMM 'de' yyyy", {
+                      locale: ptBR,
+                    })}
+                  </h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {format(new Date(appointment.scheduled_time), 'HH:mm')} -{' '}
+                    {(() => {
+                      const duration = appointment.actual_duration || appointment.service.duration
+                      const [hours, minutes] = duration.split(':').map(Number)
+                      const durationInMinutes = hours * 60 + minutes
+                      const endTime = new Date(
+                        new Date(appointment.scheduled_time).getTime() + durationInMinutes * 60000
+                      )
+                      return format(endTime, 'HH:mm')
+                    })()}
+                  </p>
+                </div>
               )}
             </div>
 
