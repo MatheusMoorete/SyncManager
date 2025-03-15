@@ -170,7 +170,7 @@ export default function AtendimentosPage() {
           const transactionData = {
             type: 'income' as const,
             category: 'Serviços',
-            amount: Number(appointment.final_price),
+            amount: completionData?.finalPrice || Number(appointment.final_price),
             paymentMethod: 'pix' as const,
             notes: `${appointment.service.name} - ${appointment.client.full_name}`,
             transactionDate: Timestamp.fromDate(new Date(appointment.scheduled_time)),
@@ -198,7 +198,7 @@ export default function AtendimentosPage() {
           // Calcular pontos baseado no serviço e valor
           const points = loyaltyStore.actions.calculatePoints(
             appointment.service_id,
-            Number(appointment.final_price)
+            completionData?.finalPrice || Number(appointment.final_price)
           )
 
           if (points > 0) {
@@ -235,7 +235,7 @@ export default function AtendimentosPage() {
               createdAt: Timestamp.now(),
               service_id: appointment.service_id,
               service_name: appointment.service.name,
-              amount: Number(appointment.final_price),
+              amount: completionData?.finalPrice || Number(appointment.final_price),
             })
 
             toast.success(`Cliente ganhou ${points} pontos!`, {

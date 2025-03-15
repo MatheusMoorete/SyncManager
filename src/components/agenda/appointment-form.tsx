@@ -37,10 +37,11 @@ export function AppointmentForm({ appointment, onSuccess }: AppointmentFormProps
   const [isSearching, setIsSearching] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [isCustomDuration, setIsCustomDuration] = useState(false)
+  const [initialLoading, setInitialLoading] = useState(true)
   const { selectedDate, actions: scheduleActions } = useScheduleStore()
   const { customers, actions: customerActions } = useCustomerStore()
   const { services, actions: serviceActions } = useServiceStore()
-  const { config: businessHours } = useBusinessHoursStore()
+  const { config: businessHours, actions: businessHoursActions } = useBusinessHoursStore()
 
   const [selectedClient, setSelectedClient] = useState<{
     id: string
@@ -78,19 +79,26 @@ export function AppointmentForm({ appointment, onSuccess }: AppointmentFormProps
     }
   }, [appointment, scheduleActions])
 
-  // Carregar clientes e serviços ao montar o componente
+  // Carregar todos os dados necessários ao montar o componente
   useEffect(() => {
-    customerActions.fetchCustomers()
-    serviceActions.fetchServices()
-  }, [customerActions, serviceActions])
+    const loadInitialData = async () => {
+      setInitialLoading(true)
+      try {
+        await Promise.all([
+          customerActions.fetchCustomers(),
+          serviceActions.fetchServices(),
+          businessHoursActions.fetchConfig(),
+        ])
+      } catch (error) {
+        console.error('Erro ao carregar dados iniciais:', error)
+        toast.error('Erro ao carregar dados. Tente novamente.')
+      } finally {
+        setInitialLoading(false)
+      }
+    }
 
-  // Carregar configurações ao montar o componente
-  useEffect(() => {
-    customerActions.fetchCustomers()
-    serviceActions.fetchServices()
-    const { actions } = useBusinessHoursStore.getState()
-    actions.fetchConfig()
-  }, [customerActions, serviceActions])
+    loadInitialData()
+  }, [customerActions, serviceActions, businessHoursActions])
 
   // Resetar formulário
   const resetForm = () => {
@@ -308,266 +316,273 @@ export function AppointmentForm({ appointment, onSuccess }: AppointmentFormProps
 
   return (
     <Card className={cn('p-2', !appointment && 'max-w-3xl mx-auto')}>
-      <div className="space-y-3">
-        {/* Cabeçalho */}
-        {!appointment && (
-          <div className="flex items-center justify-between">
-            <h3 className="font-medium text-base">Novo Agendamento</h3>
-            <Button variant="ghost" size="sm" onClick={() => setIsSearching(!isSearching)}>
-              <Search className="h-4 w-4 mr-1" />
-              Buscar Cliente
-            </Button>
-          </div>
-        )}
-
-        {/* Formulário */}
-        <div className="space-y-4">
-          {/* Cliente */}
-          {isSearching ? (
-            <div className="space-y-2">
-              <Label>Buscar Cliente</Label>
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Digite o nome ou telefone..."
-                  className="pl-9"
-                  value={searchTerm}
-                  onChange={e => setSearchTerm(e.target.value)}
-                />
-              </div>
-              {searchTerm.length > 0 && (
-                <ScrollArea className="h-[200px] w-full rounded-md border">
-                  <div className="p-4">
-                    {filteredCustomers.length === 0 ? (
-                      <p className="text-sm text-muted-foreground text-center">
-                        Nenhum cliente encontrado
-                      </p>
-                    ) : (
-                      <div className="space-y-2">
-                        {filteredCustomers.map(customer => (
-                          <div
-                            key={customer.id}
-                            className="flex items-center justify-between p-2 hover:bg-accent rounded-lg cursor-pointer"
-                            onClick={() => handleClientSelect(customer)}
-                          >
-                            <div>
-                              <p className="font-medium">{customer.full_name}</p>
-                              <p className="text-sm text-muted-foreground">
-                                {customer.phone || 'Sem telefone'}
-                              </p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </ScrollArea>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <Label>Cliente</Label>
-              <Input
-                placeholder="Nome do cliente"
-                value={selectedClient ? selectedClient.name : newClient.name}
-                onChange={e => {
-                  if (!selectedClient) {
-                    setNewClient(prev => ({ ...prev, name: e.target.value }))
-                  }
-                }}
-                readOnly={!!selectedClient}
-              />
-              <Input
-                placeholder="Telefone"
-                value={selectedClient ? selectedClient.phone : formatPhoneNumber(newClient.phone)}
-                onChange={e => {
-                  if (!selectedClient) {
-                    setNewClient(prev => ({ ...prev, phone: e.target.value }))
-                  }
-                }}
-                readOnly={!!selectedClient}
-              />
+      {initialLoading ? (
+        <div className="flex flex-col items-center justify-center py-8">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="mt-4 text-sm text-muted-foreground">Carregando dados...</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {/* Cabeçalho */}
+          {!appointment && (
+            <div className="flex items-center justify-between">
+              <h3 className="font-medium text-base">Novo Agendamento</h3>
+              <Button variant="ghost" size="sm" onClick={() => setIsSearching(!isSearching)}>
+                <Search className="h-4 w-4 mr-1" />
+                Buscar Cliente
+              </Button>
             </div>
           )}
 
-          {/* Data e Hora */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Data</Label>
-              <Input
-                type="date"
-                value={format(selectedDate, 'yyyy-MM-dd')}
-                onChange={handleDateChange}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Hora</Label>
-              <Input
-                type="time"
-                value={selectedTime}
-                onChange={e => setSelectedTime(e.target.value)}
-                onBlur={e => {
-                  const time = e.target.value
-                  if (!time) return // Não validar se estiver vazio
-
-                  if (!validateTime(time)) {
-                    let errorMessage = 'Horário inválido.'
-                    if (businessHours?.starttime && businessHours?.endtime) {
-                      errorMessage += ` Escolha um horário entre ${businessHours.starttime} e ${businessHours.endtime}`
-                      if (businessHours.lunchbreak) {
-                        errorMessage += ` (exceto ${businessHours.lunchbreak.start} - ${businessHours.lunchbreak.end})`
-                      }
-                    }
-                    toast.error(errorMessage)
-                    setSelectedTime('')
-                  }
-                }}
-                step="900" // 15 minutos
-              />
-            </div>
-          </div>
-
-          {/* Serviço e Duração */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Serviço</Label>
-              <Select
-                value={selectedService?.id}
-                onValueChange={value => {
-                  const service = services.find(s => s.id === value)
-                  setSelectedService(service || null)
-                  if (service) {
-                    const durationInHours = Math.floor(service.duration / 60)
-                    const durationInMinutes = service.duration % 60
-                    const formattedDuration = `${durationInHours
-                      .toString()
-                      .padStart(2, '0')}:${durationInMinutes.toString().padStart(2, '0')}:00`
-
-                    // Verifica se a duração está nas opções pré-definidas
-                    const standardDurations = [
-                      '00:15:00',
-                      '00:30:00',
-                      '00:45:00',
-                      '01:00:00',
-                      '01:30:00',
-                      '02:00:00',
-                    ]
-                    if (standardDurations.includes(formattedDuration)) {
-                      setIsCustomDuration(false)
-                    } else {
-                      setIsCustomDuration(true)
-                    }
-                    setDuration(formattedDuration)
-                  }
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione um serviço" />
-                </SelectTrigger>
-                <SelectContent className="max-h-[200px]">
-                  <ScrollArea className="max-h-[180px]">
-                    {services.map(service => (
-                      <SelectItem key={service.id} value={service.id!}>
-                        {service.name}
-                      </SelectItem>
-                    ))}
-                  </ScrollArea>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label>Duração</Label>
-              <Select
-                value={isCustomDuration ? 'custom' : duration}
-                onValueChange={(value: string) => {
-                  if (value === 'custom') {
-                    setIsCustomDuration(true)
-                  } else {
-                    setIsCustomDuration(false)
-                    setDuration(value)
-                  }
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione a duração" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="00:15:00">15 minutos</SelectItem>
-                  <SelectItem value="00:30:00">30 minutos</SelectItem>
-                  <SelectItem value="00:45:00">45 minutos</SelectItem>
-                  <SelectItem value="01:00:00">1 hora</SelectItem>
-                  <SelectItem value="01:30:00">1 hora e 30 minutos</SelectItem>
-                  <SelectItem value="02:00:00">2 horas</SelectItem>
-                  <SelectItem value="custom">Personalizado</SelectItem>
-                </SelectContent>
-              </Select>
-              {isCustomDuration && (
-                <div className="mt-2">
+          {/* Formulário */}
+          <div className="space-y-4">
+            {/* Cliente */}
+            {isSearching ? (
+              <div className="space-y-2">
+                <Label>Buscar Cliente</Label>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    type="time"
-                    step="900"
-                    value={duration ? duration.slice(0, 5) : '00:00'}
-                    onChange={e => {
-                      if (!e.target.value) return
-                      const [hours, minutes] = e.target.value.split(':').map(Number)
-                      if (isNaN(hours) || isNaN(minutes)) return
-                      const formattedDuration = `${hours.toString().padStart(2, '0')}:${minutes
-                        .toString()
-                        .padStart(2, '0')}:00`
-                      setDuration(formattedDuration)
-                    }}
+                    placeholder="Digite o nome ou telefone..."
+                    className="pl-9"
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
                   />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Insira o tempo no formato HH:MM
-                  </p>
                 </div>
-              )}
+                {searchTerm.length > 0 && (
+                  <ScrollArea className="h-[200px] w-full rounded-md border">
+                    <div className="p-4">
+                      {filteredCustomers.length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center">
+                          Nenhum cliente encontrado
+                        </p>
+                      ) : (
+                        <div className="space-y-2">
+                          {filteredCustomers.map(customer => (
+                            <div
+                              key={customer.id}
+                              className="flex items-center justify-between p-2 hover:bg-accent rounded-lg cursor-pointer"
+                              onClick={() => handleClientSelect(customer)}
+                            >
+                              <div>
+                                <p className="font-medium">{customer.full_name}</p>
+                                <p className="text-sm text-muted-foreground">
+                                  {customer.phone || 'Sem telefone'}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </ScrollArea>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <Label>Cliente</Label>
+                <Input
+                  placeholder="Nome do cliente"
+                  value={selectedClient ? selectedClient.name : newClient.name}
+                  onChange={e => {
+                    if (!selectedClient) {
+                      setNewClient(prev => ({ ...prev, name: e.target.value }))
+                    }
+                  }}
+                  readOnly={!!selectedClient}
+                />
+                <Input
+                  placeholder="Telefone"
+                  value={selectedClient ? selectedClient.phone : formatPhoneNumber(newClient.phone)}
+                  onChange={e => {
+                    if (!selectedClient) {
+                      setNewClient(prev => ({ ...prev, phone: e.target.value }))
+                    }
+                  }}
+                  readOnly={!!selectedClient}
+                />
+              </div>
+            )}
+
+            {/* Data e Hora */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Data</Label>
+                <Input
+                  type="date"
+                  value={format(selectedDate, 'yyyy-MM-dd')}
+                  onChange={handleDateChange}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Hora</Label>
+                <Input
+                  type="time"
+                  value={selectedTime}
+                  onChange={e => setSelectedTime(e.target.value)}
+                  onBlur={e => {
+                    const time = e.target.value
+                    if (!time) return // Não validar se estiver vazio
+
+                    if (!validateTime(time)) {
+                      let errorMessage = 'Horário inválido.'
+                      if (businessHours?.starttime && businessHours?.endtime) {
+                        errorMessage += ` Escolha um horário entre ${businessHours.starttime} e ${businessHours.endtime}`
+                        if (businessHours.lunchbreak) {
+                          errorMessage += ` (exceto ${businessHours.lunchbreak.start} - ${businessHours.lunchbreak.end})`
+                        }
+                      }
+                      toast.error(errorMessage)
+                      setSelectedTime('')
+                    }
+                  }}
+                  step="900" // 15 minutos
+                />
+              </div>
             </div>
-          </div>
 
-          {/* Observações */}
-          <div className="space-y-2">
-            <Label>Observações</Label>
-            <Textarea
-              placeholder="Adicione observações sobre o agendamento..."
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
-            />
-          </div>
+            {/* Serviço e Duração */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Serviço</Label>
+                <Select
+                  value={selectedService?.id}
+                  onValueChange={value => {
+                    const service = services.find(s => s.id === value)
+                    setSelectedService(service || null)
+                    if (service) {
+                      const durationInHours = Math.floor(service.duration / 60)
+                      const durationInMinutes = service.duration % 60
+                      const formattedDuration = `${durationInHours
+                        .toString()
+                        .padStart(2, '0')}:${durationInMinutes.toString().padStart(2, '0')}:00`
 
-          {/* Botões */}
-          <div className="flex justify-end gap-2 pt-4">
-            <Button
-              variant="outline"
-              onClick={appointment ? () => onSuccess?.() : resetForm}
-              disabled={loading}
-            >
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={
-                loading ||
-                (!selectedClient && (!newClient.name || !newClient.phone)) ||
-                !selectedService ||
-                !selectedTime
-              }
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Salvando...
-                </>
-              ) : appointment ? (
-                'Atualizar'
-              ) : (
-                'Salvar'
-              )}
-            </Button>
+                      // Verifica se a duração está nas opções pré-definidas
+                      const standardDurations = [
+                        '00:15:00',
+                        '00:30:00',
+                        '00:45:00',
+                        '01:00:00',
+                        '01:30:00',
+                        '02:00:00',
+                      ]
+                      if (standardDurations.includes(formattedDuration)) {
+                        setIsCustomDuration(false)
+                      } else {
+                        setIsCustomDuration(true)
+                      }
+                      setDuration(formattedDuration)
+                    }
+                  }}
+                >
+                  <SelectTrigger className="truncate">
+                    <SelectValue placeholder="Selecione um serviço" className="truncate" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[200px]">
+                    <ScrollArea className="h-[200px]">
+                      {services.map(service => (
+                        <SelectItem key={service.id} value={service.id!} className="truncate">
+                          {service.name}
+                        </SelectItem>
+                      ))}
+                    </ScrollArea>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Duração</Label>
+                <Select
+                  value={isCustomDuration ? 'custom' : duration}
+                  onValueChange={(value: string) => {
+                    if (value === 'custom') {
+                      setIsCustomDuration(true)
+                    } else {
+                      setIsCustomDuration(false)
+                      setDuration(value)
+                    }
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione a duração" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="00:15:00">15 minutos</SelectItem>
+                    <SelectItem value="00:30:00">30 minutos</SelectItem>
+                    <SelectItem value="00:45:00">45 minutos</SelectItem>
+                    <SelectItem value="01:00:00">1 hora</SelectItem>
+                    <SelectItem value="01:30:00">1 hora e 30 minutos</SelectItem>
+                    <SelectItem value="02:00:00">2 horas</SelectItem>
+                    <SelectItem value="custom">Personalizado</SelectItem>
+                  </SelectContent>
+                </Select>
+                {isCustomDuration && (
+                  <div className="mt-2">
+                    <Input
+                      type="time"
+                      step="900"
+                      value={duration ? duration.slice(0, 5) : '00:00'}
+                      onChange={e => {
+                        if (!e.target.value) return
+                        const [hours, minutes] = e.target.value.split(':').map(Number)
+                        if (isNaN(hours) || isNaN(minutes)) return
+                        const formattedDuration = `${hours.toString().padStart(2, '0')}:${minutes
+                          .toString()
+                          .padStart(2, '0')}:00`
+                        setDuration(formattedDuration)
+                      }}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Insira o tempo no formato HH:MM
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Observações */}
+            <div className="space-y-2">
+              <Label>Observações</Label>
+              <Textarea
+                placeholder="Adicione observações sobre o agendamento..."
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+              />
+            </div>
+
+            {/* Botões */}
+            <div className="flex justify-end gap-2 pt-4">
+              <Button
+                variant="outline"
+                onClick={appointment ? () => onSuccess?.() : resetForm}
+                disabled={loading}
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleSubmit}
+                disabled={
+                  loading ||
+                  (!selectedClient && (!newClient.name || !newClient.phone)) ||
+                  !selectedService ||
+                  !selectedTime
+                }
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Salvando...
+                  </>
+                ) : appointment ? (
+                  'Atualizar'
+                ) : (
+                  'Salvar'
+                )}
+              </Button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
     </Card>
   )
 }
