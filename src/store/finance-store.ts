@@ -48,18 +48,32 @@ interface FinanceStats {
   monthlyProjection: number
   incomeByCategory: { category: string; total: number }[]
   expensesByCategory: { category: string; total: number }[]
+  period?: {
+    start: Date
+    end: Date
+    label: string
+  }
 }
 
 interface FinanceStore {
   transactions: Transaction[]
   expenses: Expense[]
   stats: FinanceStats | null
+  selectedPeriod: 'current' | 'previous' | 'custom' | string
+  customPeriod: {
+    start: Date
+    end: Date
+  } | null
   loading: boolean
   error: string | null
   actions: {
     fetchTransactions: () => Promise<void>
     fetchExpenses: () => Promise<void>
-    calculateStats: () => Promise<void>
+    calculateStats: (period?: 'current' | 'previous' | 'custom' | string) => Promise<void>
+    setPeriod: (
+      period: 'current' | 'previous' | 'custom' | string,
+      customDates?: { start: Date; end: Date }
+    ) => void
     addTransaction: (
       transaction: Omit<Transaction, 'id' | 'createdAt' | 'ownerId'>
     ) => Promise<void>
@@ -77,6 +91,8 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
   transactions: [],
   expenses: [],
   stats: null,
+  selectedPeriod: 'current',
+  customPeriod: null,
   loading: false,
   error: null,
   actions: {
@@ -134,29 +150,84 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
       }
     },
 
-    calculateStats: async () => {
+    calculateStats: async period => {
       const { transactions } = get()
-      const currentDate = new Date()
-      const firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
-      const lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0)
+      const currentPeriod = period || get().selectedPeriod
 
-      // Filtrar transações do mês atual
-      const monthTransactions = transactions.filter(t => {
+      let firstDayOfMonth: Date
+      let lastDayOfMonth: Date
+      let periodLabel: string
+
+      const currentDate = new Date()
+
+      // Determinar o período com base na seleção
+      if (currentPeriod === 'previous') {
+        // Mês anterior
+        firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1)
+        lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 0)
+        periodLabel = `${firstDayOfMonth.toLocaleString('pt-BR', {
+          month: 'long',
+          year: 'numeric',
+        })}`
+      } else if (currentPeriod === 'custom' && get().customPeriod) {
+        // Período personalizado
+        const customPeriod = get().customPeriod
+        if (customPeriod) {
+          const { start, end } = customPeriod
+          firstDayOfMonth = start
+          lastDayOfMonth = end
+          periodLabel = `${start.toLocaleDateString('pt-BR')} até ${end.toLocaleDateString(
+            'pt-BR'
+          )}`
+        } else {
+          // Fallback para o mês atual se customPeriod for null
+          firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
+          lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0)
+          periodLabel = `${firstDayOfMonth.toLocaleString('pt-BR', {
+            month: 'long',
+            year: 'numeric',
+          })}`
+        }
+      } else if (currentPeriod === 'year') {
+        // Ano atual
+        firstDayOfMonth = new Date(currentDate.getFullYear(), 0, 1)
+        lastDayOfMonth = new Date(currentDate.getFullYear(), 11, 31)
+        periodLabel = `${currentDate.getFullYear()}`
+      } else if (currentPeriod === 'quarter') {
+        // Trimestre atual
+        const quarter = Math.floor(currentDate.getMonth() / 3)
+        firstDayOfMonth = new Date(currentDate.getFullYear(), quarter * 3, 1)
+        lastDayOfMonth = new Date(currentDate.getFullYear(), (quarter + 1) * 3, 0)
+        periodLabel = `${firstDayOfMonth.toLocaleString('pt-BR', {
+          month: 'short',
+        })} - ${lastDayOfMonth.toLocaleString('pt-BR', { month: 'short', year: 'numeric' })}`
+      } else {
+        // Mês atual (padrão)
+        firstDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
+        lastDayOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0)
+        periodLabel = `${firstDayOfMonth.toLocaleString('pt-BR', {
+          month: 'long',
+          year: 'numeric',
+        })}`
+      }
+
+      // Filtrar transações do período selecionado
+      const periodTransactions = transactions.filter(t => {
         const transactionDate = t.transactionDate.toDate()
         return transactionDate >= firstDayOfMonth && transactionDate <= lastDayOfMonth
       })
 
       // Calcular totais
-      const totalIncome = monthTransactions
+      const totalIncome = periodTransactions
         .filter(t => t.type === 'income')
         .reduce((sum, t) => sum + t.amount, 0)
 
-      const totalExpenses = monthTransactions
+      const totalExpenses = periodTransactions
         .filter(t => t.type === 'expense')
         .reduce((sum, t) => sum + t.amount, 0)
 
       // Calcular por categoria
-      const incomeByCategory = monthTransactions
+      const incomeByCategory = periodTransactions
         .filter(t => t.type === 'income')
         .reduce((acc, t) => {
           const existing = acc.find(item => item.category === t.category)
@@ -168,7 +239,7 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
           return acc
         }, [] as { category: string; total: number }[])
 
-      const expensesByCategory = monthTransactions
+      const expensesByCategory = periodTransactions
         .filter(t => t.type === 'expense')
         .reduce((acc, t) => {
           const existing = acc.find(item => item.category === t.category)
@@ -239,6 +310,11 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
           monthlyProjection,
           incomeByCategory,
           expensesByCategory,
+          period: {
+            start: firstDayOfMonth,
+            end: lastDayOfMonth,
+            label: periodLabel,
+          },
         },
       })
     },
@@ -366,6 +442,22 @@ export const useFinanceStore = create<FinanceStore>((set, get) => ({
       } finally {
         set({ loading: false })
       }
+    },
+
+    setPeriod: (period, customDates) => {
+      if (period === 'custom' && customDates) {
+        set({
+          selectedPeriod: period,
+          customPeriod: customDates,
+        })
+      } else {
+        set({
+          selectedPeriod: period,
+          customPeriod: null,
+        })
+      }
+
+      get().actions.calculateStats(period)
     },
   },
 }))

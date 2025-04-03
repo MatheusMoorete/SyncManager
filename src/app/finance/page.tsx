@@ -52,64 +52,73 @@ import { type TransactionFormValues } from '@/types/finance'
 
 export default function FinancePage() {
   const { transactions, stats, loading: storeLoading, error, actions } = useFinanceStore()
-  const [transactionToEdit, setTransactionToEdit] = useState<Transaction | null>(null)
-  const [transactionToDelete, setTransactionToDelete] = useState<Transaction | null>(null)
-  const [showDeleteAlert, setShowDeleteAlert] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
+  const [transactionToDelete, setTransactionToDelete] = useState<string | null>(null)
+  const [loadingDelete, setLoadingDelete] = useState(false)
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null)
 
   useEffect(() => {
-    actions.fetchTransactions()
-    actions.fetchExpenses()
+    const loadInitialData = async () => {
+      try {
+        await actions.fetchTransactions()
+
+        // Se for início de um novo mês, mostra automaticamente o mês anterior
+        const today = new Date()
+        if (today.getDate() <= 5) {
+          actions.setPeriod('previous')
+        } else {
+          actions.setPeriod('current')
+        }
+      } catch (error) {
+        console.error('Erro ao carregar dados financeiros:', error)
+      }
+    }
+
+    loadInitialData()
   }, [actions])
 
   const handleEditClick = (transaction: Transaction) => {
-    setTransactionToEdit(transaction)
+    setEditingTransaction(transaction)
   }
 
   const handleDeleteTransaction = (transaction: Transaction) => {
-    setTransactionToDelete(transaction)
-    setShowDeleteAlert(true)
+    setTransactionToDelete(transaction.id)
+    setDeleteDialogOpen(true)
   }
 
   const confirmDelete = async () => {
     try {
-      setIsSubmitting(true)
-      await actions.deleteTransaction(transactionToDelete!.id)
+      setLoadingDelete(true)
+      await actions.deleteTransaction(transactionToDelete!)
       setTransactionToDelete(null)
-      setShowDeleteAlert(false)
+      setDeleteDialogOpen(false)
       toast.success('Transação excluída com sucesso!')
     } catch (error) {
       console.error('Error deleting transaction:', error)
       toast.error('Erro ao excluir transação')
     } finally {
-      setIsSubmitting(false)
+      setLoadingDelete(false)
     }
   }
 
   const handleEditSubmit = async (data: TransactionFormValues) => {
     try {
-      setIsSubmitting(true)
-      await actions.updateTransaction(transactionToEdit!.id, data)
-      setTransactionToEdit(null)
+      await actions.updateTransaction(editingTransaction!.id, data)
+      setEditingTransaction(null)
       toast.success('Transação atualizada com sucesso!')
     } catch (error) {
       console.error('Error updating transaction:', error)
       toast.error('Erro ao atualizar transação')
-    } finally {
-      setIsSubmitting(false)
     }
   }
 
   const handleAddTransaction = async (data: TransactionFormValues) => {
     try {
-      setIsSubmitting(true)
       await actions.addTransaction(data)
       toast.success('Transação adicionada com sucesso!')
     } catch (error) {
       console.error('Error adding transaction:', error)
       toast.error('Erro ao adicionar transação')
-    } finally {
-      setIsSubmitting(false)
     }
   }
 
@@ -335,11 +344,11 @@ export default function FinancePage() {
       </AlertDialog>
 
       {/* Edit Transaction Dialog */}
-      {transactionToEdit && (
+      {editingTransaction && (
         <TransactionDialog
-          transaction={transactionToEdit}
-          open={!!transactionToEdit}
-          onOpenChange={() => setTransactionToEdit(null)}
+          transaction={editingTransaction}
+          open={!!editingTransaction}
+          onOpenChange={() => setEditingTransaction(null)}
         />
       )}
     </div>
