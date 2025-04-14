@@ -37,26 +37,24 @@ export const customerFormSchema = z.object({
 export type CustomerFormValues = z.infer<typeof customerFormSchema>
 
 export interface Customer {
-  id?: string
+  id: string
   full_name: string
-  email: string | null
   phone: string
+  email: string | null
   birth_date: string | null
   notes: string | null
-  ownerId: string
   createdAt: Timestamp
   updatedAt: Timestamp
-  deletedAt?: Timestamp | null
-  active: boolean
   points: number
+  active: boolean
+  ownerId: string
 }
 
 export interface CustomerFilters {
   search?: string
   sortBy?: 'full_name' | 'recent' | 'points'
   sortOrder?: 'asc' | 'desc'
-  perPage?: number
   hasEmail?: boolean
   hasNotes?: boolean
-  onlyActive?: boolean
+  perPage?: number
 }

@@ -33,6 +33,7 @@ import {
   Database,
   ChevronLeft,
   ChevronRight,
+  Link as LinkIcon,
 } from 'lucide-react'
 import { signOut } from '@/lib/auth'
 
@@ -85,6 +86,11 @@ const managementNavItems = [
  * @description Itens de navegação relacionados às configurações do sistema
  */
 const systemNavItems = [
+  {
+    title: 'Links de Agendamento',
+    href: '/links-agendamento',
+    icon: LinkIcon,
+  },
   {
     title: 'Sistema de Fidelidade',
     href: '/configuracoes/fidelidade',

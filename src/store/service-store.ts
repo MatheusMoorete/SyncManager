@@ -18,6 +18,8 @@ import {
 } from 'firebase/firestore'
 import { useAuthStore } from './auth-store'
 import { Service, ServiceFormValues, ServiceFilters } from '@/types/service'
+import { getMockServices, mockServices } from '@/lib/mock-data'
+import { isDevelopment } from '@/lib/utils'
 
 interface ServiceState {
   services: Service[]
@@ -53,13 +55,31 @@ export const useServiceStore = create<ServiceState>((set, get) => ({
 
   actions: {
     fetchServices: async () => {
-      const { filters } = get()
       const { user } = useAuthStore.getState()
-      if (!user) return
-
-      set({ loading: true, error: null })
+      if (!user && !isDevelopment()) {
+        throw new Error('Usuário não autenticado')
+      }
 
       try {
+        set({ loading: true })
+
+        // Em desenvolvimento, podemos usar dados mockados
+        if (isDevelopment()) {
+          console.log('🧪 Usando dados mockados para serviços')
+
+          // Simula um atraso de rede para testar loading states
+          await new Promise(resolve => setTimeout(resolve, 500))
+
+          set({
+            services: getMockServices(),
+            loading: false,
+          })
+          return
+        }
+
+        // Em produção, busca no Firestore
+        const { filters } = get()
+
         let q = query(
           collection(db, 'services'),
           where('ownerId', '==', user.uid),

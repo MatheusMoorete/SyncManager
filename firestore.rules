@@ -29,21 +29,54 @@ service cloud.firestore {
 
     match /customers/{customerId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() &&
-        request.resource.data.ownerId == request.auth.uid;
-      allow update: if isAuthenticated();
-      allow delete: if isAuthenticated() && isOwner(resource);
+      
+      // Permitir criação autenticada normal 
+      allow create: if isAuthenticated() && hasValidOwner();
+      
+      // Permitir criação pública via link de agendamento
+      allow create: if 
+        // Verifica que o cliente tem um source definido como 'booking_link'
+        request.resource.data.source == 'booking_link' &&
+        // Garante que os campos necessários estão presentes
+        request.resource.data.ownerId is string &&
+        request.resource.data.full_name is string && 
+        request.resource.data.phone is string;
+      
+      allow update, delete: if isAuthenticated() && isOwner(resource);
     }
 
     match /services/{serviceId} {
-      allow read: if isAuthenticated();
+      // Usuários autenticados só podem ler seus próprios serviços
+      allow read: if isAuthenticated() && (
+        resource == null || isOwner(resource)
+      );
+      
+      // Permitir leitura pública para serviços ativos, apenas para agendamentos
+      allow read: if resource.data.active == true && resource.data.public_booking == true;
+      
+      // Exigir ownerId válido e igual ao usuário atual
       allow create: if isAuthenticated() && hasValidOwner();
+      
+      // Apenas o proprietário pode atualizar ou excluir
       allow update, delete: if isAuthenticated() && isOwner(resource);
     }
 
     match /appointments/{appointmentId} {
       allow read: if isAuthenticated();
+      
+      // Permitir criação autenticada normal
       allow create: if isAuthenticated() && hasValidOwner();
+      
+      // Permitir criação pública via link de agendamento
+      allow create: if 
+        // Verifica se o booking_link_id existe
+        request.resource.data.booking_link_id != null &&
+        // Verifica se existe um source definido como 'booking_link'
+        request.resource.data.source == 'booking_link' &&
+        // Garante que os campos necessários estão presentes
+        request.resource.data.client_id is string &&
+        request.resource.data.service_id is string;
+      
       allow update, delete: if isAuthenticated() && isOwner(resource);
     }
 
@@ -82,7 +115,11 @@ service cloud.firestore {
     }
 
     match /business_hours/{userId} {
+      // Usuários autenticados com o mesmo ID podem ler e escrever
       allow read, write: if isAuthenticated() && request.auth.uid == userId;
+      
+      // Permitir leitura pública para horário de funcionamento
+      allow read: if true;
     }
 
     match /loyalty_config/{userId} {
@@ -137,6 +174,22 @@ service cloud.firestore {
     // Regras para a configuração de backup
     match /backup_config/{userId} {
       allow read, write: if isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // === Booking Links ===
+    match /booking_links/{linkId} {
+      // Proprietário pode realizar operações de leitura e atualização
+      allow read, update, delete: if isAuthenticated() && isOwner(resource);
+      
+      // Na criação, garantir que o ownerId seja o usuário atual
+      allow create: if isAuthenticated() && 
+                    hasValidOwner() && 
+                    request.resource.data.services is list &&
+                    request.resource.data.name is string;
+      
+      // Permitir leitura pública apenas de links ativos para agendamentos
+      allow read: if resource.data.active == true && 
+                  resource.data.is_active == true;  // verificação dupla para compatibilidade
     }
   }
 } 

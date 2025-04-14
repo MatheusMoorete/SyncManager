@@ -23,6 +23,8 @@ import {
   getDoc,
 } from 'firebase/firestore'
 import { useAuthStore } from '@/store/auth-store'
+import { getMockCustomers, mockCustomers } from '@/lib/mock-data'
+import { isDevelopment } from '@/lib/utils'
 
 /**
  * @interface DatabaseCustomer
@@ -80,6 +82,10 @@ interface CustomerState {
     updateFilters: (filters: Partial<CustomerFilters>) => void
     /** Busca um cliente específico com seus detalhes */
     fetchCustomer: (id: string) => Promise<void>
+    /** Verifica se um cliente já existe pelo telefone */
+    checkIfCustomerExists: (phone: string) => Promise<Customer | null>
+    /** Obtém um cliente pelo ID a partir do estado atual */
+    getCustomerById: (id: string) => Customer | undefined
   }
   selectedCustomer?: Customer
 }
@@ -125,6 +131,11 @@ const formatPhoneNumber = (value: string) => {
   return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7)}`
 }
 
+// Função auxiliar para normalizar telefone (remove formatação)
+const normalizePhone = (phone: string) => {
+  return phone.replace(/\D/g, '')
+}
+
 /**
  * @hook useCustomerStore
  * @description Hook Zustand para gerenciamento de estado dos clientes
@@ -156,10 +167,30 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
   actions: {
     fetchCustomers: async () => {
       const { user } = useAuthStore.getState()
-      if (!user) throw new Error('Usuário não autenticado')
+      if (!user && !isDevelopment()) {
+        throw new Error('Usuário não autenticado')
+      }
 
       try {
         set({ loading: true })
+        
+        // Em desenvolvimento, podemos usar dados mockados
+        if (isDevelopment()) {
+          console.log('🧪 Usando dados mockados para clientes')
+          
+          // Simula um atraso de rede para testar loading states
+          await new Promise(resolve => setTimeout(resolve, 500))
+          
+          set({
+            customers: getMockCustomers(),
+            loading: false,
+            totalCount: mockCustomers.length,
+            hasMore: false,
+          })
+          return
+        }
+        
+        // Em produção, continua com a lógica normal de busca no Firestore
         const { filters } = get()
 
         let q = query(
@@ -218,15 +249,66 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
       }
     },
 
+    checkIfCustomerExists: async (phone: string) => {
+      const { user } = useAuthStore.getState()
+      if (!user) throw new Error('Usuário não autenticado')
+
+      try {
+        console.log(`Verificando se cliente com telefone ${phone} já existe`)
+        const normalizedPhone = normalizePhone(phone)
+
+        // Buscar todos os clientes ativos
+        const q = query(
+          collection(db, 'customers'),
+          where('ownerId', '==', user.uid),
+          where('active', '==', true)
+        )
+
+        const snapshot = await getDocs(q)
+
+        // Verificar se algum dos documentos tem o mesmo telefone normalizado
+        const matchingCustomer = snapshot.docs.find(doc => {
+          const customerPhone = normalizePhone(doc.data().phone || '')
+          return customerPhone === normalizedPhone
+        })
+
+        if (matchingCustomer) {
+          console.log(`Cliente encontrado: ${matchingCustomer.id}`)
+          return {
+            id: matchingCustomer.id,
+            ...matchingCustomer.data(),
+            phone: formatPhoneNumber(matchingCustomer.data().phone),
+          } as Customer
+        }
+
+        console.log('Cliente não encontrado')
+        return null
+      } catch (error) {
+        console.error('Erro ao verificar cliente existente:', error)
+        return null
+      }
+    },
+
     createCustomer: async (data: CustomerFormValues) => {
       try {
         const { user } = useAuthStore.getState()
         if (!user) throw new Error('Usuário não autenticado')
 
+        // Verificar se o cliente já existe antes de criar
+        const existingCustomer = await get().actions.checkIfCustomerExists(data.phone)
+        if (existingCustomer) {
+          console.log(`Cliente já existe com ID ${existingCustomer.id}, retornando o existente`)
+          toast.info('Cliente já cadastrado, usando cadastro existente')
+          return existingCustomer
+        }
+
+        console.log('Criando novo cliente...')
         const now = Timestamp.now()
+        const normalizedPhone = normalizePhone(data.phone)
+
         const customerData = {
           full_name: data.fullName.trim(),
-          phone: data.phone,
+          phone: normalizedPhone,
           email: data.email || null,
           birth_date: data.birthDate || null,
           notes: data.notes || null,
@@ -238,12 +320,17 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
         }
 
         const docRef = await addDoc(collection(db, 'customers'), customerData)
-        const newCustomer = { id: docRef.id, ...customerData } as Customer
+        const newCustomer = {
+          id: docRef.id,
+          ...customerData,
+          phone: formatPhoneNumber(normalizedPhone),
+        } as Customer
 
         set(state => ({
           customers: [...state.customers, newCustomer],
         }))
 
+        console.log(`Cliente criado com sucesso: ${newCustomer.id}`)
         return newCustomer
       } catch (error) {
         console.error('Erro ao criar cliente:', error)
@@ -336,26 +423,70 @@ export const useCustomerStore = create<CustomerState>((set, get) => ({
 
     fetchCustomer: async (id: string) => {
       const { user } = useAuthStore.getState()
-      if (!user) throw new Error('Usuário não autenticado')
+      if (!user && !isDevelopment()) {
+        throw new Error('Usuário não autenticado')
+      }
 
       try {
         set({ loading: true })
-        const customerRef = doc(db, 'customers', id)
-        const customerDoc = await getDoc(customerRef)
 
-        if (!customerDoc.exists()) {
-          throw new Error('Cliente não encontrado')
+        // Em desenvolvimento, podemos usar dados mockados
+        if (isDevelopment()) {
+          console.log(`🧪 Buscando cliente mockado com ID: ${id}`)
+          
+          // Simula um atraso de rede para testar loading states
+          await new Promise(resolve => setTimeout(resolve, 300))
+          
+          const foundCustomer = mockCustomers.find(c => c.id === id)
+          if (foundCustomer) {
+            set({ selectedCustomer: foundCustomer })
+            return
+          } else {
+            console.warn(`Cliente mockado com ID ${id} não encontrado`)
+          }
         }
-
-        const customerData = customerDoc.data() as Customer
-        set({ selectedCustomer: { id: customerDoc.id, ...customerData } })
+        
+        // Em produção, busca no Firestore
+        const customerDoc = await getDoc(doc(db, 'customers', id))
+        
+        if (customerDoc.exists()) {
+          const customerData = customerDoc.data() as DatabaseCustomer
+          
+          // Se o cliente foi excluído logicamente, tratar como não encontrado
+          if (customerData.active === false) {
+            toast.error('Cliente não encontrado ou foi removido')
+            set({ loading: false })
+            return
+          }
+          
+          const customer: Customer = {
+            id: customerDoc.id,
+            ...customerData,
+          }
+          
+          set({ selectedCustomer: customer })
+        } else {
+          toast.error('Cliente não encontrado')
+        }
       } catch (error) {
         console.error('Error fetching customer:', error)
-        toast.error('Erro ao buscar cliente')
-        throw error
+        toast.error('Erro ao buscar detalhes do cliente')
       } finally {
         set({ loading: false })
       }
+    },
+
+    // Método para obter cliente pelo ID do estado atual
+    getCustomerById: (id: string) => {
+      const { customers, selectedCustomer } = get()
+
+      // Verificar primeiro se o ID corresponde ao cliente selecionado
+      if (selectedCustomer && selectedCustomer.id === id) {
+        return selectedCustomer
+      }
+
+      // Caso contrário, buscar na lista de clientes
+      return customers.find(customer => customer.id === id)
     },
   },
   selectedCustomer: undefined,

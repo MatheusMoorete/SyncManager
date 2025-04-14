@@ -149,17 +149,46 @@ export function CustomerList({ customers, onUpdate, onDelete, loading }: Custome
   }
 
   const formatBirthDate = (date: string | null | undefined) => {
-    if (!date) return undefined
+    if (!date) return 'Não informado'
+
     try {
-      // Se a data já estiver no formato DD/MM/YYYY, retorna como está
+      // Se a data já estiver no formato DD/MM/YYYY, validar e retornar
       if (date.includes('/')) {
+        const parts = date.split('/')
+        if (parts.length !== 3) return 'Data inválida'
+
+        // Validar se é uma data real
+        const parsedDate = new Date(
+          parseInt(parts[2]), // ano
+          parseInt(parts[1]) - 1, // mês (0-11)
+          parseInt(parts[0]) // dia
+        )
+
+        if (isNaN(parsedDate.getTime())) return 'Data inválida'
+
         return date
       }
+
       // Se estiver no formato YYYY-MM-DD, converte para DD/MM/YYYY
-      const parsedDate = parse(date, 'yyyy-MM-dd', new Date())
-      return format(parsedDate, 'dd/MM/yyyy', { locale: ptBR })
-    } catch {
-      return date
+      if (date.includes('-')) {
+        const parsedDate = parse(date, 'yyyy-MM-dd', new Date())
+
+        // Verificar se a data é válida
+        if (isNaN(parsedDate.getTime())) return 'Data inválida'
+
+        return format(parsedDate, 'dd/MM/yyyy', { locale: ptBR })
+      }
+
+      // Último recurso: tentar criar uma data diretamente
+      const directDate = new Date(date)
+      if (!isNaN(directDate.getTime())) {
+        return format(directDate, 'dd/MM/yyyy', { locale: ptBR })
+      }
+
+      return 'Data inválida'
+    } catch (error) {
+      console.error('Erro ao formatar data de nascimento:', error, date)
+      return 'Data inválida'
     }
   }
 
@@ -230,7 +259,7 @@ export function CustomerList({ customers, onUpdate, onDelete, loading }: Custome
                   </TableCell>
                   <TableCell className="py-3 text-center">
                     <p className="font-medium text-heading">
-                      {customer.birth_date ? formatBirthDate(customer.birth_date) : 'Não informado'}
+                      {formatBirthDate(customer.birth_date)}
                     </p>
                   </TableCell>
                   <TableCell className="py-3">

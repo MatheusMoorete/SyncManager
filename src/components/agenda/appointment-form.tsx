@@ -31,9 +31,10 @@ import { useAuthStore } from '@/store/auth-store'
 interface AppointmentFormProps {
   appointment?: Appointment
   onSuccess?: () => void
+  initialData?: any
 }
 
-export function AppointmentForm({ appointment, onSuccess }: AppointmentFormProps) {
+export function AppointmentForm({ appointment, onSuccess, initialData }: AppointmentFormProps) {
   const [isSearching, setIsSearching] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [isCustomDuration, setIsCustomDuration] = useState(false)
@@ -48,7 +49,13 @@ export function AppointmentForm({ appointment, onSuccess }: AppointmentFormProps
     name: string
     phone: string
   } | null>(
-    appointment
+    initialData?.client
+      ? {
+          id: initialData.client.id,
+          name: initialData.client.full_name,
+          phone: initialData.client.phone || '',
+        }
+      : appointment
       ? {
           id: appointment.client_id,
           name: appointment.client.full_name,
@@ -98,7 +105,7 @@ export function AppointmentForm({ appointment, onSuccess }: AppointmentFormProps
     }
 
     loadInitialData()
-  }, [customerActions, serviceActions, businessHoursActions])
+  }, [])
 
   // Resetar formulário
   const resetForm = () => {
@@ -178,35 +185,42 @@ export function AppointmentForm({ appointment, onSuccess }: AppointmentFormProps
         }
 
         try {
+          // Formatar e normalizar o telefone
+          const formattedPhone = formatPhoneNumber(newClient.phone)
+
+          // Verificar se o cliente já existe
+          console.log(`Verificando se cliente com telefone ${formattedPhone} já existe...`)
+
           const newClientData = {
             fullName: newClient.name,
-            phone: formatPhoneNumber(newClient.phone).replace(/\D/g, ''),
+            phone: formattedPhone,
           }
 
-          // Criar o cliente
+          // Usar a lógica centralizada para verificar e criar cliente
           const result = await customerActions.createCustomer(newClientData)
 
-          // Aguardar a atualização da lista de clientes
-          await customerActions.fetchCustomers()
-
-          // Usar o ID retornado diretamente da criação
+          // Usar o ID retornado diretamente
           if (!result?.id) {
-            toast.error('Erro ao criar cliente')
+            toast.error('Erro ao processar cliente')
             return
           }
 
           clientId = result.id
-          toast.success('Cliente adicionado com sucesso!')
 
-          // Atualizar o selectedClient com o novo cliente
+          // Atualizar a lista de clientes
+          await customerActions.fetchCustomers()
+
+          // Atualizar o selectedClient com o cliente novo ou existente
           setSelectedClient({
             id: result.id,
-            name: newClient.name,
-            phone: formatPhoneNumber(newClient.phone),
+            name: result.full_name,
+            phone: formatPhoneNumber(result.phone),
           })
+
+          console.log(`Cliente processado com sucesso: ${result.id}`)
         } catch (error) {
-          console.error('Error creating client:', error)
-          toast.error('Erro ao criar cliente')
+          console.error('Erro ao processar cliente:', error)
+          toast.error('Erro ao processar cliente')
           return
         }
       }

@@ -254,7 +254,10 @@ export function AppointmentDetailsDialog({
                       Duração:{' '}
                       {(() => {
                         const duration = appointment.actual_duration || appointment.service.duration
-                        const [hours, minutes] = duration.split(':').map(Number)
+                        // Agora tratando corretamente como um número (em minutos)
+                        const durationInMinutes = typeof duration === 'number' ? duration : 0
+                        const hours = Math.floor(durationInMinutes / 60)
+                        const minutes = durationInMinutes % 60
 
                         if (hours === 0) {
                           return `${minutes} minutos`
@@ -299,8 +302,8 @@ export function AppointmentDetailsDialog({
                     {format(new Date(appointment.scheduled_time), 'HH:mm')} -{' '}
                     {(() => {
                       const duration = appointment.actual_duration || appointment.service.duration
-                      const [hours, minutes] = duration.split(':').map(Number)
-                      const durationInMinutes = hours * 60 + minutes
+                      // Agora tratando corretamente como um número (em minutos)
+                      const durationInMinutes = typeof duration === 'number' ? duration : 0
                       const endTime = new Date(
                         new Date(appointment.scheduled_time).getTime() + durationInMinutes * 60000
                       )

@@ -1,18 +1,37 @@
 'use client'
 
+import { useState, useEffect } from 'react'
+import { onAuthStateChanged, User } from 'firebase/auth'
+import { auth } from '@/lib/firebase'
 import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
-import { useAuthStore } from '@/store/auth-store'
 
-export const useAuth = () => {
+interface AuthState {
+  user: User | null
+  loading: boolean
+}
+
+export function useAuth() {
+  const [authState, setAuthState] = useState<AuthState>({
+    user: null,
+    loading: true,
+  })
   const router = useRouter()
-  const { user, loading } = useAuthStore()
 
   useEffect(() => {
-    if (!loading && !user) {
-      router.push('/login')
-    }
-  }, [user, loading, router])
+    const unsubscribe = onAuthStateChanged(auth, user => {
+      setAuthState({
+        user,
+        loading: false,
+      })
 
-  return { user, loading }
+      // Redirecionar para login se não estiver autenticado
+      if (!user) {
+        router.push('/login')
+      }
+    })
+
+    return () => unsubscribe()
+  }, [router])
+
+  return authState
 }
