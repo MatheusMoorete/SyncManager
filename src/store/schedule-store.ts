@@ -39,6 +39,8 @@ import {
   DocumentData,
 } from 'firebase/firestore'
 import { useAuthStore } from './auth-store'
+import { getMockAppointments, mockAppointments } from '@/lib/mock-data'
+import { isDevelopment } from '@/lib/utils'
 
 /**
  * @const businessHours
@@ -73,6 +75,8 @@ interface ScheduleState {
   actions: {
     /** Busca todos os agendamentos aplicando os filtros atuais */
     fetchAppointments: () => Promise<void>
+    /** Busca agendamentos de um cliente específico por ID */
+    fetchCustomerAppointments: (customerId: string) => Promise<void>
     /** Cria um novo agendamento */
     createAppointment: (data: AppointmentFormValues) => Promise<void>
     /** Atualiza os dados de um agendamento existente */
@@ -127,10 +131,28 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
   actions: {
     fetchAppointments: async () => {
       const { user } = useAuthStore.getState()
-      if (!user) throw new Error('Usuário não autenticado')
+      if (!user && !isDevelopment()) {
+        throw new Error('Usuário não autenticado')
+      }
 
       try {
         set({ loading: true })
+
+        // Em desenvolvimento, podemos usar dados mockados
+        if (isDevelopment()) {
+          console.log('🧪 Usando dados mockados para agendamentos')
+
+          // Simula um atraso de rede para testar loading states
+          await new Promise(resolve => setTimeout(resolve, 500))
+
+          set({
+            appointments: getMockAppointments(),
+            loading: false,
+          })
+          return
+        }
+
+        // Em produção, busca no Firestore
         const { filters } = get()
 
         let q = query(
@@ -226,6 +248,124 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
       } catch (error) {
         console.error('Error fetching appointments:', error)
         toast.error('Erro ao carregar agendamentos')
+      } finally {
+        set({ loading: false })
+      }
+    },
+
+    fetchCustomerAppointments: async (customerId: string) => {
+      const { user } = useAuthStore.getState()
+      if (!user && !isDevelopment()) {
+        throw new Error('Usuário não autenticado')
+      }
+
+      try {
+        set({ loading: true })
+        console.log(`Buscando agendamentos do cliente ${customerId}`)
+
+        // Em desenvolvimento, usar dados mockados
+        if (isDevelopment()) {
+          console.log('Usando dados mockados para agendamentos em desenvolvimento')
+
+          // Importação dinâmica para evitar incluir o arquivo em produção
+          const mockModule = await import('@/lib/mock-data')
+          const mockAppointments = mockModule.getMockAppointments()
+
+          // Simulação de delay para testes de loading
+          await new Promise(resolve => setTimeout(resolve, 300))
+
+          // Filtrar apenas os agendamentos do cliente
+          const customerAppointments = mockAppointments.filter(app => app.client_id === customerId)
+
+          console.log(`Encontrados ${customerAppointments.length} agendamentos mockados`)
+          set(state => ({ ...state, appointments: customerAppointments, loading: false }))
+          return
+        }
+
+        // Em produção, buscar do Firestore
+        // Verificar se usuário está autenticado
+        if (!user) {
+          throw new Error('Usuário não autenticado')
+        }
+
+        // Consulta para buscar agendamentos do cliente específico
+        let q = query(
+          collection(db, 'appointments'),
+          where('ownerId', '==', user.uid),
+          where('client_id', '==', customerId),
+          orderBy('scheduled_time', 'desc') // Mais recentes primeiro
+        )
+
+        const snapshot = await getDocs(q)
+        const appointments: Appointment[] = []
+
+        // Processar os resultados e obter detalhes dos serviços para cada agendamento
+        for (const docSnapshot of snapshot.docs) {
+          const appointmentData = docSnapshot.data()
+          const serviceDoc = await getDoc(doc(db, 'services', appointmentData.service_id))
+
+          if (serviceDoc.exists()) {
+            const serviceData = serviceDoc.data()
+
+            appointments.push({
+              id: docSnapshot.id,
+              client_id: appointmentData.client_id,
+              service_id: appointmentData.service_id,
+              scheduled_time:
+                appointmentData.scheduled_time instanceof Timestamp
+                  ? appointmentData.scheduled_time.toDate().toISOString()
+                  : typeof appointmentData.scheduled_time === 'string'
+                  ? appointmentData.scheduled_time
+                  : new Date().toISOString(),
+              actual_duration: appointmentData.actual_duration || null,
+              final_price: Number(appointmentData.final_price) || 0,
+              status: appointmentData.status || 'scheduled',
+              notes: appointmentData.notes || null,
+              discount: appointmentData.discount || null,
+              createdAt:
+                appointmentData.createdAt instanceof Timestamp
+                  ? appointmentData.createdAt.toDate().toISOString()
+                  : typeof appointmentData.createdAt === 'string'
+                  ? appointmentData.createdAt
+                  : new Date().toISOString(),
+              client: {
+                full_name: '', // Já temos o ID do cliente, então esses dados serão preenchidos posteriormente
+                phone: '',
+              },
+              service: {
+                name: serviceData.name || '',
+                duration: serviceData.duration || 0,
+                base_price: Number(serviceData.price) || 0,
+              },
+            } as Appointment)
+          }
+        }
+
+        // Buscar detalhes do cliente uma única vez, já que é o mesmo para todos os agendamentos
+        if (appointments.length > 0) {
+          const customerDoc = await getDoc(doc(db, 'customers', customerId))
+          if (customerDoc.exists()) {
+            const clientData = customerDoc.data()
+
+            // Atualizar todos os agendamentos com as informações do cliente
+            const updatedAppointments = appointments.map(app => ({
+              ...app,
+              client: {
+                full_name: clientData.full_name || '',
+                phone: clientData.phone || '',
+              },
+            }))
+
+            set({ appointments: updatedAppointments })
+          }
+        } else {
+          set({ appointments: [] })
+        }
+
+        console.log(`Encontrados ${appointments.length} agendamentos para o cliente ${customerId}`)
+      } catch (error) {
+        console.error('Error fetching customer appointments:', error)
+        toast.error('Erro ao carregar agendamentos do cliente')
       } finally {
         set({ loading: false })
       }

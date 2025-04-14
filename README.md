@@ -99,6 +99,35 @@ npm run dev
 │   └── types/              # Tipos TypeScript
 ```
 
+## Melhorias Recentes
+
+### Prevenção de Duplicação de Clientes
+
+O sistema foi aprimorado para detectar e prevenir automaticamente a criação de clientes duplicados:
+
+- Implementação de uma função central `checkIfCustomerExists` no `CustomerStore` que verifica se um cliente já existe baseado no número de telefone
+- Normalização de números de telefone para garantir que diferentes formatos sejam reconhecidos como o mesmo número
+- Integração da verificação de duplicidade em todas as entradas do sistema:
+  - Formulário de agendamento para clientes finais
+  - Formulário de criação de atendimento no dashboard
+  - Importação de clientes em massa
+
+Benefícios:
+
+- Redução de registros duplicados na base de dados
+- Melhor experiência do usuário ao identificar automaticamente clientes retornando
+- Histórico de atendimentos consolidado para cada cliente
+- Maior confiabilidade no sistema de fidelidade
+
+### Melhorias na UI de Seleção Múltipla
+
+O componente `MultiSelect` foi otimizado para:
+
+- Melhor performance com o uso de `React.useMemo` e `React.useCallback`
+- Prevenção de re-renderizações desnecessárias
+- Interface mais intuitiva para seleção de múltiplos itens
+- Melhor filtro de pesquisa para grandes conjuntos de dados
+
 ## Convenções de Código
 
 - Commits seguem o padrão Conventional Commits
@@ -113,3 +142,25 @@ npm run dev
 2. Commit suas mudanças: `git commit -m 'feat: adiciona nova feature'`
 3. Push para a branch: `git push origin feature/nome-da-feature`
 4. Abra um Pull Request
+
+## Sistema de Dados Mockados
+
+Este projeto utiliza dados mockados para desenvolvimento que são **automaticamente excluídos da build de produção**.
+
+### Como funciona
+
+- Arquivos `.env.development` e `.env.production` controlam o uso de mocks
+- Importação dinâmica e verificação de ambiente garantem exclusão do código em produção
+- Script `check-mocks` verifica se a build está livre de referências aos dados mockados
+
+### Comandos úteis
+
+```bash
+# Construir para produção (sem mocks)
+npm run build
+
+# Verificar se não há referências a mocks na build
+npm run check-mocks
+```
+
+Para mais detalhes, consulte o [MOCK_DATA_README.md](./MOCK_DATA_README.md).
