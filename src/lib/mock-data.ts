@@ -17,8 +17,11 @@ import { isDevelopment } from './utils'
 const isProduction = () =>
   process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_USE_MOCKS !== 'true'
 
-// Se estamos em produção, emite um aviso no console
-if (isProduction()) {
+// Verificação se estamos em um ambiente do navegador (runtime) vs servidor/build
+const isRuntimeEnvironment = typeof window !== 'undefined'
+
+// Se estamos em produção E em runtime (não durante o build), emite um aviso no console
+if (isProduction() && isRuntimeEnvironment) {
   console.warn(
     'O arquivo mock-data.ts foi importado em ambiente de produção. Isto não deveria acontecer.'
   )
